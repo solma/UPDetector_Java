@@ -29,6 +29,7 @@ import main.EventClassifier;
 import accelerometer.feature.AccelerometerFeature;
 import accelerometer.feature.FeatureExtraction;
 
+//test
 public class AccelerometerSignalProcessing {
 
 	//TODO variable
