@@ -10,7 +10,7 @@
 	<classpathentry kind="lib" path="lib/guava-15.0-rc1.jar"/>
 	<classpathentry kind="lib" path="lib/jtransforms-2.4.jar"/>
 	<classpathentry kind="lib" path="lib/weka.jar" sourcepath="lib/weka-src.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/jAudio"/>
 	<classpathentry kind="lib" path="lib/jmathplot.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/jAudio"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
