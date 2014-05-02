@@ -409,7 +409,7 @@ public class FeatureExtraction {
 					boolean labeled=false;
 					for(int i=0;i<2;i++){
 						if(labeledLines.get(i).contains(previousWindows.get(scope/2).timeIndex)){
-							if(i==Constants.UNPARKING) line+=",u\n";
+							if(i==Constants.UNPARKING_ACTIVITY) line+=",u\n";
 							else line+=",p\n";
 							labeled=true;
 							break;

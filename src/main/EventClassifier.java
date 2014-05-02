@@ -282,11 +282,11 @@ public class EventClassifier {
 					//System.out.println(secondsOfADay+"  "+pred);
 					dateSeq=CommonUtils.getFileName(pathOfFeatureFile).replace("ACCELEROMETER_FEATURE_", "").replace(".arff", "");
 					if(pred.equals("p") ){
-	                	AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+	                	AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 					}else{
 						if(pred.equals("u")){
 							//System.out.println(ParkSense.detectedEvents.size());
-							AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+							AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 						}
 					}
 					
@@ -325,7 +325,7 @@ public class EventClassifier {
 				for(int i=0;i<2;i++){
 					// ground truth 
 					ArrayList<String> timestamps=EventDetection.groundTruth.get(dateSeq).get(i);
-					if(i==Constants.PARKING) System.out.println("Groundtruth Parking events:");
+					if(i==Constants.PARKING_ACTIVITY) System.out.println("Groundtruth Parking events:");
 					else System.out.println("Groundtruth Unparking events:");
 					for(String timestamp: timestamps){
 						String time=timestamp.split("-")[1];
@@ -334,7 +334,7 @@ public class EventClassifier {
 					System.out.println();
 					
 					//detected
-					if(i==Constants.PARKING) System.out.println("Deteced Parking events:");
+					if(i==Constants.PARKING_ACTIVITY) System.out.println("Deteced Parking events:");
 					else System.out.println("Deteced Unparking events:");
 					for(String timestamp: AccelerometerSignalProcessing.detectedEvents.get(i)){
 						if(timestamp.contains(dateSeq)){
@@ -651,11 +651,11 @@ public class EventClassifier {
 				//add detected events
 				if(walkingStateClass.contains(curState)&&drivingStateClass.contains(prevState)){
 						System.out.println("Parking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
-						AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING).add(inputFileNameInDateFormat+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+						AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING_ACTIVITY).add(inputFileNameInDateFormat+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 				}else{
 					if(drivingStateClass.contains(curState)&&walkingStateClass.contains(prevState)){
 						System.out.println("Unparking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
-						AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING).add(inputFileNameInDateFormat+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+						AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(inputFileNameInDateFormat+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 					}
 				}
 				prevState=curState;

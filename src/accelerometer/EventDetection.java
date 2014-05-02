@@ -18,6 +18,10 @@ import org.apache.commons.math3.stat.descriptive.moment.Mean;
 
 import com.google.common.primitives.Doubles;
 
+import datastructure.UPActivitiesOfSameSource;
+import datastructure.UPActivity;
+import datastructure.UPActivity.SOURCE;
+
 
 public class EventDetection {
 	
@@ -43,100 +47,64 @@ public class EventDetection {
 	}
 	
 	//purpose: so events with adjacent timestamp only count as 1
-	private static ArrayList<String> calNoOfDetectedEvents(ArrayList<String> detectedEvents){
-		int cnt=0;
-		int prevTime=0;
-		ArrayList<String> clusteredEvents=new ArrayList<String>();
-		for(String dateTime: detectedEvents){
-			String[] fields=dateTime.split("-");
-			int timeOfSecond=CommonUtils.HMSToSeconds(fields[1]);
-			if(Math.abs(timeOfSecond-prevTime)>3){//if move out the neighboring area, then count as a new event
-				cnt+=1;
-				clusteredEvents.add(dateTime);
+	private static ArrayList<UPActivity> clusterDetectedEvents(ArrayList<UPActivity> detectedEvents){
+		ArrayList<UPActivity> clusteredEvents=new ArrayList<UPActivity>();
+		UPActivity prev=null;
+		for(UPActivity event: detectedEvents){
+			if(prev==null||event.timeDiffWithinThreshold(prev)){//if move out the neighboring area, then count as a new event
+				clusteredEvents.add(event);
 			}
-			prevTime=timeOfSecond;
+			prev=event;
 		}
 		return clusteredEvents;
 	}
 	
 	//detection results:  one parking list: one unparking list
 	// each timestamp format: date-hms
-	public static double[][] calculatePerformance(ArrayList<ArrayList<String>> detectionResults){
+	public static double[][] calculatePrecisionAndRecall(UPActivitiesOfSameSource detectionResults, UPActivitiesOfSameSource groudtruth){
 		
-		System.out.println("************************   Detection Performance:  ***************************");
+		System.out.println("************************   Detection Precision and Recall:  ***************************");
 		int tp,fp, fn;
 		
 		int[] offsets={0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5};
+		//get the ground-truth for parking/unparking events
+		groudtruth.sort();
+		
 		
 		double[][] preAndRecall=new double[2][2];
+		ArrayList<UPActivity> truth;
 		for(int i=0;i<2;i++){
 			tp=0; fp=0; fn=0;			
 			
-			//get the ground-truth for parking/unparking events
-			ArrayList<String> truth=new ArrayList<String>();
-			for(String date: groundTruth.keySet()){
-				truth.addAll(groundTruth.get(date).get(i));
-			}
-			//sort the truth by the date la
-			Collections.sort(truth, new Comparator<String>() {
-				@Override
-				public int compare(String o1, String o2) {
-					String[] os={o1, o2};
-					int[][] nums=new int[2][5];
-					for(int i=0;i<os.length;i++){
-						String[] fields=os[i].split("-");
-						String[] dateParts=fields[0].split("_");
-						for(int j=0;j<dateParts.length;j++){
-							if(j<dateParts.length-1) nums[i][j]=Integer.parseInt(dateParts[j]);
-							else{
-								nums[i][j]=Integer.parseInt(dateParts[j].substring(0,2));
-								nums[i][j+1]=Integer.parseInt(dateParts[j].substring(2));
-							}
-						}
-						nums[i][nums[0].length-1]=CommonUtils.HMSToSeconds(fields[1]);
-					}
-					for(int i=0;i<nums[0].length;i++){
-						int diff=nums[0][i]-nums[1][i];
-						if(diff!=0) return diff;						
-					}
-					return 0;
-				}
-			});
-			
-			//convert the detection results to a set
-			HashSet<String> detected=new HashSet<String>();
-			for(String dateTime: detectionResults.get(i)){
-				String[] fields=dateTime.split("-");
-				for(int j=0;j<offsets.length;j++){
-					int timeOfSecond=CommonUtils.HMSToSeconds(fields[1])+offsets[j];
-					detected.add(fields[0]+"-"+CommonUtils.secondsToHMS(timeOfSecond) ) ;
-				}
-			}
-			
-			
-			ArrayList<String> falseNegative=new ArrayList<String>();
-			for(String dateTime: truth){
-				if(detected.contains(dateTime)){
+			truth=groudtruth.get(i);
+			double avgDelay=0;
+			//calculate false negatives
+			ArrayList<UPActivity> falseNegative=new ArrayList<UPActivity>();
+			UPActivity matchedGroundtruthEvent;
+			for(UPActivity event: detectionResults.get(i)){
+				matchedGroundtruthEvent=event.matchToGroundtruthEvent(truth);
+				if(matchedGroundtruthEvent!=null){
 					tp+=1;
+					avgDelay+=event.timeInSecOfDay-matchedGroundtruthEvent.timeInSecOfDay;
 				}else{
-					falseNegative.add(dateTime);
+					falseNegative.add(event);
 				}
 			}
 			
 			
 			//fp=classificationResults.get(i).size()-tp;
-			ArrayList<String> clusteredEvents=calNoOfDetectedEvents(detectionResults.get(i));
+			ArrayList<UPActivity> clusteredEvents=clusterDetectedEvents(detectionResults.get(i));
 			fp= clusteredEvents.size()-tp;
 			fn=truth.size()-tp;
+			avgDelay/=tp;
 			
-			if(i==Constants.PARKING){
+			if(i==Constants.PARKING_ACTIVITY){
 				System.out.println("********    Parking Events: **********");
 			}
 			else{
 				System.out.println("********    Unparking Events: **********");
 			}
-			Collections.sort(truth);
-			Collections.sort(clusteredEvents);
+			
 			System.out.println("               Truth: "+ truth.size()+"  "+truth);
 			System.out.println("(Clusted)   Detected: "+ clusteredEvents.size()+"  "+clusteredEvents);
 			System.out.println("(Unclusted) Detected: "+ detectionResults.get(i).size()+"  "+detectionResults.get(i));
@@ -150,7 +118,7 @@ public class EventDetection {
 			
 			double precision=((int)(tp/(tp+fp+0.0)*1000))/1000.0;
 			double recall=((int)(tp/(tp+fn+0.0)*1000))/1000.0;
-			System.out.println("Precision="+precision+"		Recall="+recall);
+			System.out.println("Precision="+precision+"		Recall="+recall+"		avgDelay="+String.format("%.2f secs", avgDelay));
 			System.out.println();
 		
 			preAndRecall[i][0]=precision;preAndRecall[i][1]=recall;
@@ -159,10 +127,11 @@ public class EventDetection {
 	}
 	
 	//@fn date
-	public static void detectEvents(String dateSeq ,HashMap<String, ArrayList<ArrayList<String>> > groundTruth){
-		ArrayList<ArrayList<String>> detectedTransitions= findMotionStateTransition(dateSeq);
+	public static UPActivitiesOfSameSource detectEvents(String dateSeq ,UPActivitiesOfSameSource groundTruth){
+		//detect activities by discovering transitions
+		UPActivitiesOfSameSource detectedTransitions= findMotionStateTransition(dateSeq);
 		
-		for(int i=0;i<detectedTransitions.size();i++){
+		/*for(int i=0;i<detectedTransitions.size();i++){
 			//add the parking/unparking events
 			for(String timestamp: detectedTransitions.get(i)){
 				String seconds=CommonUtils.cutField(timestamp, ":", 0, 3, ":");
@@ -170,9 +139,9 @@ public class EventDetection {
 					AccelerometerSignalProcessing.detectedEvents.get(i).add(dateSeq+"-"+seconds );
 				}
 			}
-		}
+		}*/
 		
-		for(int i=0;i<2;i++){
+		/*for(int i=0;i<2;i++){
 			if(i==0) System.out.println("Groudtruth Parking events:");
 			else System.out.println("Groudtruth Unparking events:");
 			System.out.println(groundTruth.get(dateSeq).get(i));
@@ -181,7 +150,7 @@ public class EventDetection {
 			}
 			System.out.println();		
 			
-			if(i==0) System.out.println("Deteced Parking events:");
+			if(i==Constants.PARKING_ACTIVITY) System.out.println("Deteced Parking events:");
 			else System.out.println("Deteced Unparking events:");
 			System.out.println(AccelerometerSignalProcessing.detectedEvents.get(i));
 			//print the timestamp of the events in seconds
@@ -190,8 +159,8 @@ public class EventDetection {
 			}
 			System.out.println();
 			System.out.println();
-		}
-		
+		}*/
+		return detectedTransitions;
 	}
 	
 	/*
@@ -265,18 +234,15 @@ public class EventDetection {
     /**
      * @return detected events 
      */
-	public static ArrayList<ArrayList<String>> findMotionStateTransition(String fileNameAsDateSeq){
+	public static UPActivitiesOfSameSource findMotionStateTransition(String fileNameAsDateSeq){
 		
 		String fileName=ACTIVITY_DIR_Name+"GOOGLE_ACTIVITY_"+fileNameAsDateSeq+FILE_EXTENSION;
 		//Constants.ACCELEROMETER_BASE_DIR+"04202014/GOOGLE_ACTIVITY_UPDATE_2014_04_200.log";
 		
-		ArrayList<ArrayList<String>> events=new ArrayList<ArrayList<String>>();
+		UPActivitiesOfSameSource eventsDetectedByGoogleAPI=new UPActivitiesOfSameSource(SOURCE.GOOGLE_API);
 		try{
 			Scanner sc=new Scanner(new File(fileName));
 
-			events.add(new ArrayList<String>()); //parking events
-			events.add(new ArrayList<String>()); //unparking events
-			
 			NO_Of_Consecutive_OnFootActivities=0;
 
 			String lastOnFootOrInVehicleActivity=""; 
@@ -299,16 +265,17 @@ public class EventDetection {
 				
 				//parking
 				if(isFromInVehicletoOnFoot(newOnFootOrInVehicleActivity, lastOnFootOrInVehicleActivity)) {
-					if(!events.get(0).contains(fields[TIMESTAMP_IDX])){
-						events.get(0).add(fields[TIMESTAMP_IDX]);
-					}
+					eventsDetectedByGoogleAPI.add(new UPActivity(SOURCE.GOOGLE_API, 
+							Constants.PARKING_ACTIVITY, fileNameAsDateSeq.substring(0, 10),
+							CommonUtils.cutField(fields[TIMESTAMP_IDX], ":", 0, 3, ":")
+							));
 				}
 				
 				//unparking
 				if(isFromOnFoottoInVehicle(newOnFootOrInVehicleActivity, lastOnFootOrInVehicleActivity)){
-					if(!events.get(1).contains(fields[TIMESTAMP_IDX])){
-						events.get(1).add(fields[TIMESTAMP_IDX]);
-					}
+					eventsDetectedByGoogleAPI.add(new UPActivity(SOURCE.GOOGLE_API, 
+							Constants.UNPARKING_ACTIVITY, fileNameAsDateSeq.substring(0, 10),
+							CommonUtils.cutField(fields[TIMESTAMP_IDX], ":", 0, 3, ":")));
 				}
 				lastOnFootOrInVehicleActivity=newOnFootOrInVehicleActivity;
 				
@@ -322,7 +289,7 @@ public class EventDetection {
 		}catch(Exception ex){
 			ex.printStackTrace();
 		}
-		return events;
+		return eventsDetectedByGoogleAPI;
 	}
 	
 	
@@ -335,8 +302,8 @@ public class EventDetection {
 		 * @param pathOfRawFiles
 		 * @return
 		 */
-		public static HashMap<String, ArrayList<ArrayList<String>> > readGroudTruth(String[] pathOfRawFiles){
-			groundTruth.clear();			
+		public static UPActivitiesOfSameSource readGroudTruthFromRawAccelerometerFile(String[] pathOfRawFiles){
+			UPActivitiesOfSameSource groudtruth=new UPActivitiesOfSameSource(SOURCE.GROUND_TRUTH);
 			try{
 				for(String filepath: pathOfRawFiles ){
 					String dateSeq;
@@ -346,11 +313,11 @@ public class EventDetection {
 						dateSeq=CommonUtils.getFileName(filepath).replace("ACCELEROMETER_RAW_", "").replace(".log", "");
 					//System.out.println(dateSeq);
 					
-					if(!groundTruth.containsKey(filepath)){
+					/*if(!groundTruth.containsKey(filepath)){
 						groundTruth.put(dateSeq, new ArrayList<ArrayList<String>>());
 						groundTruth.get(dateSeq).add(new ArrayList<String>()); //parking events
 						groundTruth.get(dateSeq).add(new ArrayList<String>()); //unparking events										
-					}
+					}*/
 					
 					Scanner sc=new Scanner(new File(filepath));
 					
@@ -364,9 +331,11 @@ public class EventDetection {
 							for(int i=2;i<fields.length;i++){
 								String[] timestamps=fields[i].split("~");
 								if(!dateSeq.equals("2013_08_2311")||!timestamps[0].equals("18:41:50")){
-									groundTruth.get(dateSeq).get(Constants.UNPARKING).add(dateSeq+"-"+timestamps[0]); //read time to second only
+									//groundTruth.get(dateSeq).get(Constants.UNPARKING_ACTIVITY).add(dateSeq+"-"+timestamps[0]); //read time to second only
+									groudtruth.add(new UPActivity(SOURCE.GROUND_TRUTH, Constants.UNPARKING_ACTIVITY, dateSeq.substring(0, 10), timestamps[0]));
 								}
-								groundTruth.get(dateSeq).get(Constants.PARKING).add(dateSeq+"-"+timestamps[1]);
+								//groundTruth.get(dateSeq).get(Constants.PARKING_ACTIVITY).add(dateSeq+"-"+timestamps[1]);
+								groudtruth.add(new UPActivity(SOURCE.GROUND_TRUTH, Constants.PARKING_ACTIVITY, dateSeq.substring(0, 10), timestamps[1]));
 							}
 							
 							break;
@@ -374,14 +343,14 @@ public class EventDetection {
 					}
 					sc.close();
 				}
-
+				System.out.println(groudtruth);
 				//printGroundTruth();			
 				
 			}catch(Exception ex){
 				ex.printStackTrace();
 			}
 				
-			return groundTruth;
+			return groudtruth;
 		}
 		
 		public static void printGroundTruth(){

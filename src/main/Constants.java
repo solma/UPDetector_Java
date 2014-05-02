@@ -2,8 +2,8 @@ package main;
 
 public final class Constants {
 
-	public static final int UNPARKING=0;
-	public static final int PARKING=1;
+	public static final int UNPARKING_ACTIVITY=0;
+	public static final int PARKING_ACTIVITY=1;
 	
 	public static final String DATA_BASE_DIR="E:/workspace/android/UPDetector/data/";
 	

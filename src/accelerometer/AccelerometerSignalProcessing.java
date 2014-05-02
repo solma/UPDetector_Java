@@ -21,6 +21,8 @@ import weka.filters.unsupervised.attribute.MergeTwoValues;
 
 import com.google.common.io.Files;
 
+import datastructure.UPActivitiesOfSameSource;
+
 import fusion.ProcessingForFusion;
 
 import main.CommonUtils;
@@ -33,6 +35,7 @@ import accelerometer.feature.FeatureExtraction;
 public class AccelerometerSignalProcessing {
 
 	//TODO variable
+	//store the events detected
 	public static ArrayList<ArrayList<String>> detectedEvents=new ArrayList<ArrayList<String>>();
 	
 	
@@ -56,8 +59,7 @@ public class AccelerometerSignalProcessing {
 		detectedEvents.clear();
 		detectedEvents.add(new ArrayList<String>());
 		detectedEvents.add(new ArrayList<String>());
-		EventDetection.readGroudTruth(new String[]{Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log"});
-		detectByMSTViaGoogleAPI("2014_04_200");
+		detectByMSTViaGoogleAPI("2014_05_012");
 		
 		
 		//generateVectorsOfCIVIndicator(Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log", 10, 3);
@@ -86,7 +88,7 @@ public class AccelerometerSignalProcessing {
 		ArrayList<String> vectors=null;
 		
 		//read the ground truth		
-		EventDetection.readGroudTruth(pathForFilesToBeClassified);		
+		EventDetection.readGroudTruthFromRawAccelerometerFile(pathForFilesToBeClassified);		
 		
 		
 		ArrayList<String> labeldVectors=new ArrayList<String>(); 
@@ -392,7 +394,7 @@ public class AccelerometerSignalProcessing {
 			//System.out.println(Arrays.toString(pathForFilesToBeClassified));
 			
 			//read the ground truth		
-			EventDetection.readGroudTruth(pathForFilesToBeClassified);
+			EventDetection.readGroudTruthFromRawAccelerometerFile(pathForFilesToBeClassified);
 			
 			detectedEvents.clear();
 			detectedEvents.add(new ArrayList<String>());
@@ -402,7 +404,7 @@ public class AccelerometerSignalProcessing {
 			//System.out.println(detectedEvents);	
 			
 			//EventDetection.printGroundTruth();			
-			EventDetection.calculatePerformance(detectedEvents);
+			//EventDetection.calculatePrecisionAndRecall(detectedEvents);
 		}catch(Exception ex){
 			ex.printStackTrace();
 		}
@@ -428,7 +430,7 @@ public class AccelerometerSignalProcessing {
 		
 		System.out.println("step 3:  --> EventDetection to output events");
 		if(EventDetection.setupFolderAndFieldIdx("Weka"))
-			EventDetection.detectEvents(fn, EventDetection.groundTruth);
+			//EventDetection.detectEvents(fn, EventDetection.groundTruth);
 		System.out.println();
 	}
 	
@@ -436,11 +438,15 @@ public class AccelerometerSignalProcessing {
 	 * GoogleAPI  method
 	 */
 	
-	public static void detectByMSTViaGoogleAPI(String fileNameAsDateSeq){
-		System.out.println("Google API");
-		System.out.println("step 1:  --> EventDetection to output events");
-		if(EventDetection.setupFolderAndFieldIdx("google"))
-			EventDetection.detectEvents(fileNameAsDateSeq, EventDetection.groundTruth);
+	public static void detectByMSTViaGoogleAPI(String dateSeq){
+		System.out.println("*********** Google API Detection *****************");
+		UPActivitiesOfSameSource groundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(
+	new String[]{Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_"+dateSeq+".log"});
+		
+		if(EventDetection.setupFolderAndFieldIdx("google")){
+			UPActivitiesOfSameSource eventsByGoogleAPI =EventDetection.findMotionStateTransition(dateSeq);
+			EventDetection.calculatePrecisionAndRecall(eventsByGoogleAPI, groundtruth);
+		}
 		System.out.println();
 	}
 	

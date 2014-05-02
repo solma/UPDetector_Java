@@ -162,7 +162,7 @@ public class ProcessingForFusion {
 			pathOfRawDataFiles[i]=Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log";
 		}
 		
-		EventDetection.readGroudTruth(pathOfRawDataFiles);
+		EventDetection.readGroudTruthFromRawAccelerometerFile(pathOfRawDataFiles);
 		
 		if(CIV){
 			detectedEvents.get(0).clear();
@@ -171,7 +171,7 @@ public class ProcessingForFusion {
 				calculateOutcomeLikelihood(Constants.ACCELEROMETER_FUSION_DIR+date+"_CIV.log", date);
 			}
 			//System.out.println(detectedEvents);
-			EventDetection.calculatePerformance(detectedEvents);
+			//EventDetection.calculatePrecisionAndRecall(detectedEvents);
 		}
 
 		if(MST){
@@ -181,7 +181,7 @@ public class ProcessingForFusion {
 				calculateOutcomeLikelihood(Constants.ACCELEROMETER_FUSION_DIR+date+"_MST.log", date);
 			}
 			//System.out.println(detectedEvents);
-			EventDetection.calculatePerformance(detectedEvents);
+			//EventDetection.calculatePrecisionAndRecall(detectedEvents);
 		}
 		
 		
@@ -191,7 +191,7 @@ public class ProcessingForFusion {
 			for(String date: dates){	
 				calculateOutcomeLikelihoodWithFusion(date);
 			}
-			return EventDetection.calculatePerformance(detectedEvents);
+			//return EventDetection.calculatePrecisionAndRecall(detectedEvents);
 			//System.out.println(detectedEvents);
 		}
 		return null;
@@ -727,7 +727,7 @@ public class ProcessingForFusion {
 	  			avgOutComeProb[1]+=outcomeLikelihood[1];
 	  			if(outcomeLikelihood[1]>NOTIFICATION_THRESHOLD){
 	  				outcomeCnts[1][1]+=1;
-	  				detectedEvents.get(Constants.PARKING).add(date+"-"+timeOfTheVector);
+	  				detectedEvents.get(Constants.PARKING_ACTIVITY).add(date+"-"+timeOfTheVector);
 	  				if(DEBUG_ON) System.out.println("Parking at "+timeOfTheVector+"\n");
 	  			}
 	  		}
@@ -736,7 +736,7 @@ public class ProcessingForFusion {
 	  			avgOutComeProb[2]+=outcomeLikelihood[2];
 	  			if(outcomeLikelihood[2]>NOTIFICATION_THRESHOLD){
 	  				outcomeCnts[1][2]+=1;
-	  				detectedEvents.get(Constants.UNPARKING).add(date+"-"+timeOfTheVector);
+	  				detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(date+"-"+timeOfTheVector);
 	  				if(DEBUG_ON) System.out.println("Unparking at "+timeOfTheVector+"\n");
 	  			}
 	  		}

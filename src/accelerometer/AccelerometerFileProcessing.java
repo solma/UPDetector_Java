@@ -137,8 +137,8 @@ public class AccelerometerFileProcessing {
 				String label=fields[fields.length-1];
 				if(label.equals("u")||label.equals("p")){
 					int time=Integer.parseInt(fields[0]);
-					if(label.equals("u")) labeledLines.get(Constants.UNPARKING).add(time); //add a unparking
-					else labeledLines.get(Constants.PARKING).add(time); //add a parking
+					if(label.equals("u")) labeledLines.get(Constants.UNPARKING_ACTIVITY).add(time); //add a unparking
+					else labeledLines.get(Constants.PARKING_ACTIVITY).add(time); //add a parking
 				}
 			}
 			sc.close();
@@ -171,17 +171,17 @@ public class AccelerometerFileProcessing {
 			}
 			
 			
-			if(labeledLines.get(Constants.UNPARKING).size()>0){
+			if(labeledLines.get(Constants.UNPARKING_ACTIVITY).size()>0){
 				updateDurationsString="@ in_vehicle:";
 				lineInSecs=updateDurationsString;
 			}
-			for(int i=0;i<labeledLines.get(Constants.UNPARKING).size();i++){
+			for(int i=0;i<labeledLines.get(Constants.UNPARKING_ACTIVITY).size();i++){
 				updateDurationsString+=" "+
-						CommonUtils.secondsToHMS(labeledLines.get(Constants.UNPARKING).get(i));
-				lineInSecs+=" "+labeledLines.get(Constants.UNPARKING).get(i);
-				if(labeledLines.get(Constants.PARKING).size()>i){
-					updateDurationsString+="~"+CommonUtils.secondsToHMS(labeledLines.get(Constants.PARKING).get(i));
-					lineInSecs+="~"+labeledLines.get(Constants.PARKING).get(i);
+						CommonUtils.secondsToHMS(labeledLines.get(Constants.UNPARKING_ACTIVITY).get(i));
+				lineInSecs+=" "+labeledLines.get(Constants.UNPARKING_ACTIVITY).get(i);
+				if(labeledLines.get(Constants.PARKING_ACTIVITY).size()>i){
+					updateDurationsString+="~"+CommonUtils.secondsToHMS(labeledLines.get(Constants.PARKING_ACTIVITY).get(i));
+					lineInSecs+="~"+labeledLines.get(Constants.PARKING_ACTIVITY).get(i);
 				}
 			}
 			System.out.println(updateDurationsString);
