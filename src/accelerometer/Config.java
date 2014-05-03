@@ -58,4 +58,15 @@ public class Config {
 		
 		AXES=new int[]{0, 1, 2, 3};
 	}
+	
+	public Config(int windowSize, int slidingStep){
+		this();
+		this.windowSize=windowSize;
+		this.slidingStep=slidingStep;
+	}
+	
+	public Config(int windowSize, int slidingStep, boolean motionStateFeature){
+		this(windowSize, slidingStep);
+		this.motionStateFeature=motionStateFeature;
+	}
 }

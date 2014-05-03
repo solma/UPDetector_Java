@@ -7,7 +7,7 @@ import accelerometer.Config;
 import main.Constants;
 import main.CommonUtils;
 
-public class AccelerometerFeature {
+public class WindowFeature {
 
 	public int[] temporalWindow;//the start and end time index of the window
 	public int timeIndex; //the middle time index of the window
@@ -27,7 +27,7 @@ public class AccelerometerFeature {
 	public ArrayList<ArrayList<Double>> binPercents;
 	
 	
-	public AccelerometerFeature(){
+	public WindowFeature(){
 		temporalWindow=new int[2];
 		varianceSeries=new ArrayList<ArrayList<Double>>(Constants.AXIS_NUMBER); 
 		for(int i=0;i<Constants.AXIS_NUMBER;i++) varianceSeries.add(new ArrayList<Double>());
@@ -39,7 +39,7 @@ public class AccelerometerFeature {
 		for(int i=0;i<Constants.AXIS_NUMBER;i++) binPercents.add(new ArrayList<Double>());
 	}
 	
-	public AccelerometerFeature(int[] window){
+	public WindowFeature(int[] window){
 		this();
 		for(int i=0;i<window.length; i++) temporalWindow[i]=window[i];
 		this.timeIndex=temporalWindow[0]+(temporalWindow[1]-temporalWindow[0])/2;
@@ -48,7 +48,7 @@ public class AccelerometerFeature {
 	
 	
 	public boolean equals(Object other){
-		AccelerometerFeature feature=(AccelerometerFeature)other;
+		WindowFeature feature=(WindowFeature)other;
 		return toString().equals(feature.toString());
 	}
 	
@@ -56,7 +56,7 @@ public class AccelerometerFeature {
 	/**
 	 * @return a string feature for motion state classification
 	 */
-	public String asStringForMotationState(){
+	public String asMotionStateFeatures(){
 		StringBuilder sb=new StringBuilder();
 		
 		//format needs to be compatible WISDM_Act_v1.1 dataset
@@ -80,7 +80,7 @@ public class AccelerometerFeature {
 	}
 	
 	
-	public String asStringForVarianceChange(int noOfAxes){
+	public String toString(int noOfAxes){
 		StringBuilder sb=new StringBuilder();
 		sb.append(CommonUtils.secondsToHMS(timeIndex)+" ");
 		

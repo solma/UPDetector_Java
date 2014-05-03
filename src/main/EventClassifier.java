@@ -25,7 +25,7 @@ import weka.filters.Filter;
 import weka.filters.supervised.attribute.AddClassification;
 import accelerometer.AccelerometerSignalProcessing;
 import accelerometer.EventDetection;
-import accelerometer.feature.AccelerometerFeature;
+import accelerometer.feature.WindowFeature;
 
 //reference: https://svn.cms.waikato.ac.nz/svn/weka/branches/stable-3-6/wekaexamples/src/main/java/wekaexamples/classifiers/WekaDemo.java
 public class EventClassifier {
@@ -581,7 +581,7 @@ public class EventClassifier {
 	 * @param features
 	 * @return vectors of MotionStateTransition Indicator
 	 */
-	public static ArrayList<String> classifyMotionStates(String inputFileNameInDateFormat,ArrayList<AccelerometerFeature> features){
+	public static ArrayList<String> classifyMotionStates(String inputFileNameInDateFormat,ArrayList<WindowFeature> features){
 		ArrayList<String> vectorsOfMSTIndicator=new ArrayList<String>();
 		try{
 			//build an instance and classify
@@ -602,8 +602,8 @@ public class EventClassifier {
 			String vectorOfIndicator;
 			
 			
-			for(AccelerometerFeature feature: features){
-				String[] fields=feature.asStringForMotationState().split(",");
+			for(WindowFeature feature: features){
+				String[] fields=feature.asMotionStateFeatures().split(",");
 				int n=fields.length;
 				
 				Instance in = new Instance(n+1);//class

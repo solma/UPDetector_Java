@@ -83,11 +83,11 @@ public class ConditionalProbability {
 		//getSmallestIntervalBetweenObservedMaxAndMinOfTheSameFeature
 		int[] outcomes=null;
 		switch (highLevelActivity) {
-		case ProcessingForFusion.HIGH_LEVEL_ACTIVITY_UPARKING:
-			outcomes=new int[]{ProcessingForFusion.OUTCOME_NONE, ProcessingForFusion.OUTCOME_PARKING, ProcessingForFusion.OUTCOME_UNPARKING};
+		case Fusion.HIGH_LEVEL_ACTIVITY_UPARKING:
+			outcomes=new int[]{Fusion.OUTCOME_NONE, Fusion.OUTCOME_PARKING, Fusion.OUTCOME_UNPARKING};
 			break;
-		case ProcessingForFusion.HIGH_LEVEL_ACTIVITY_IODOOR:
-			outcomes=new int[]{ProcessingForFusion.ENVIRON_INDOOR, ProcessingForFusion.ENVIRON_OUTDOOR};
+		case Fusion.HIGH_LEVEL_ACTIVITY_IODOOR:
+			outcomes=new int[]{Fusion.ENVIRON_INDOOR, Fusion.ENVIRON_OUTDOOR};
 		default:
 			break;
 		}
@@ -97,7 +97,7 @@ public class ConditionalProbability {
 		for(int outcome:outcomes){
 			if(outcome==cp.outcomeID) continue;
 			ConditionalProbability counterpart=
-					ProcessingForFusion.CONDITIONAL_PROBABILITY.get(outcome+"-"+cp.indicatorID+"-"+cp.featureIdx);
+					Fusion.CONDITIONAL_PROBABILITY.get(outcome+"-"+cp.indicatorID+"-"+cp.featureIdx);
 			interval=Math.min(interval, counterpart.observedMax-counterpart.observedMin);
 		}
 		//System.out.println(identifier+" "+interval/5);

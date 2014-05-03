@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import accelerometer.AccelerometerFileProcessing;
 import accelerometer.Config;
 import accelerometer.EventDetection;
-import accelerometer.feature.FeatureExtraction;
+import accelerometer.feature.WindowFeatureExtraction;
 
 
 public class ParkSense {

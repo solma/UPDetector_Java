@@ -18,15 +18,18 @@ import accelerometer.Config;
 
 import com.google.common.primitives.Doubles;
 
+import fusion.Fusion;
+import fusion.IndicatorVector;
 
-public class FeatureExtraction {
+
+public class WindowFeatureExtraction {
 	public static void main(String[] args){
 		Config config=new Config();
 		config.scope=50;
 		//config.minNoOfSamplesInWholeWindow=200;
-		FeatureExtraction fe=new FeatureExtraction(config, new File(Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_2013_10_251.log") );
+		WindowFeatureExtraction fe=new WindowFeatureExtraction(config, new File(Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_2013_10_251.log") );
 		System.out.println("step 1:  --> Extract Features and output the ARFF File");
-		ArrayList<AccelerometerFeature> features=fe.run();
+		ArrayList<WindowFeature> features=fe.run();
 	}
 	
 	public Config conf;
@@ -40,36 +43,17 @@ public class FeatureExtraction {
 	private static Variance var=new Variance();//obj to calculate var
 	private static Mean mean=new Mean();//obj to calculate mean
 	
-	public FeatureExtraction(Config conf, File inputFile){
+	public WindowFeatureExtraction(Config conf, File inputFile){
 		this.inputFile=inputFile;
 		this.conf=conf;
 		eventsTimestamps=new HashMap<Integer, String>();
 	}	
-	
-	
-	public ArrayList<AccelerometerFeature> run(){
-		ArrayList<AccelerometerFeature> features=extractFeature(inputFile);
-		System.out.println("The output feature file has "+features.size()+" lines.");
 
+	public ArrayList<WindowFeature> run(){
+		ArrayList<WindowFeature> features=extractFeature(inputFile);
+		
 		String outputFilePath="";
 		if(conf.motionStateFeature==false){//output features for CIV indicator
-			String outputFileName=inputFile.getName().replace("ACCELEROMETER_RAW_", "").replace(".log","");
-			
-			outputFilePath=Constants.ACCELEROMETER_FUSION_DIR;
-			/*//outputFilePath=Constants.ACCELEROMETER_CIV_FEATURES_DIR+Constants.PHONE_POSITIONS[conf.phonePlacementPosition]+"/";
-			//determine if this file is in the test folder or train folder
-			System.out.println(outputFilePath+"test/"+outputFileName);
-			if(new File(outputFilePath+"test/"+outputFileName).exists()){
-				outputFilePath+="test/";
-			}else{
-				if(new File(outputFilePath+"train/"+outputFileName).exists()){
-					outputFilePath+="train/";
-				}
-			}*/
-			
-			outputFilePath+=outputFileName+"_CIV.log";			
-			//new feature file
-			createArffInputFile(features, outputFilePath, inputFile);
 			
 		}else{//out features for detecting motion states 
 			if(conf.singleMotionStateOnly){
@@ -82,8 +66,8 @@ public class FeatureExtraction {
 				if(conf.singleMotionStateOnly){
 					//save features to a file
 					FileWriter fw=new FileWriter(outputFilePath, true);
-					for(AccelerometerFeature feature: features){
-						fw.append(feature.asStringForMotationState()+",Still\n");
+					for(WindowFeature feature: features){
+						fw.append(feature.asMotionStateFeatures()+",Still\n");
 					}
 					fw.close();
 				}
@@ -93,9 +77,38 @@ public class FeatureExtraction {
 		}
 		return features;
 	}
-	
-	
 
+	public void saveIndicatorVectorToFile(ArrayList<IndicatorVector> indicatorVectors, String dateSeq){
+		String outputFilePath=Constants.ACCELEROMETER_FUSION_DIR;
+		/*//outputFilePath=Constants.ACCELEROMETER_CIV_FEATURES_DIR+Constants.PHONE_POSITIONS[conf.phonePlacementPosition]+"/";
+		//determine if this file is in the test folder or train folder
+		System.out.println(outputFilePath+"test/"+outputFileName);
+		if(new File(outputFilePath+"test/"+outputFileName).exists()){
+			outputFilePath+="test/";
+		}else{
+			if(new File(outputFilePath+"train/"+outputFileName).exists()){
+				outputFilePath+="train/";
+			}
+		}*/
+		
+		outputFilePath+=dateSeq+"_CIV.log";			
+		
+		//ArrayList<IndicatorVector> indicatorVectors=outputCIVVectors(features, outputFilePath, inputFile);
+		try{
+			FileWriter fw=new FileWriter(outputFilePath);
+			for(IndicatorVector iv: indicatorVectors){
+				fw.write(iv.toString()+"\n");
+				//System.out.println(iv);
+			}
+			fw.close();
+			System.out.println("indicator vectors save to "+outputFilePath);
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	
 	public class Window{
 		//temporal boundary of the window
 		int[] bounds;
@@ -123,8 +136,8 @@ public class FeatureExtraction {
 	 * @param inputFile: raw accelerometer file
 	 * @return
 	 */
-	public ArrayList<AccelerometerFeature> extractFeature(File inputFile){
-		ArrayList<AccelerometerFeature> features=new ArrayList<AccelerometerFeature>();
+	public ArrayList<WindowFeature> extractFeature(File inputFile){
+		ArrayList<WindowFeature> features=new ArrayList<WindowFeature>();
 		try{
 			Scanner sc=new Scanner(inputFile);
 			
@@ -190,6 +203,7 @@ public class FeatureExtraction {
 		}catch(Exception ex){
 			ex.printStackTrace();
 		}
+		System.out.println(features.size()+" windows extracted. ");
 		return features;
 	}
 	
@@ -200,8 +214,8 @@ public class FeatureExtraction {
 	 * @param fields: the readings of the three axes
 	 * @return the extracted feature for the current window
 	 */	
-	private AccelerometerFeature slideWindow(Window window, int curTime, ArrayList<AccelerometerFeature> features, String[] fields){
-		AccelerometerFeature newFeature=null;
+	private WindowFeature slideWindow(Window window, int curTime, ArrayList<WindowFeature> features, String[] fields){
+		WindowFeature newFeature=null;
 	
 		if(curTime-window.bounds[0]>conf.windowSize){	//if the window slides
 			//System.out.println("Window: "+ Arrays.toString(window.bounds));
@@ -267,9 +281,9 @@ public class FeatureExtraction {
 		return newFeature;		
 	}
 	
-	private  AccelerometerFeature extractFeatureForCurrentWindow(Window window){
+	private  WindowFeature extractFeatureForCurrentWindow(Window window){
 		//initialize a feature
-		AccelerometerFeature feature=new AccelerometerFeature(window.bounds);
+		WindowFeature feature=new WindowFeature(window.bounds);
 		//add the content to the feature 
 		for(int axisIdx=0;axisIdx<Constants.AXIS_NUMBER; axisIdx++){
 			ArrayList<Double> axisAccl=window.acclReadings.get(axisIdx);
@@ -345,20 +359,25 @@ public class FeatureExtraction {
 	/*
 	 * @filename: path to a feature file:
 	 */
-	public void createArffInputFile(ArrayList<AccelerometerFeature> features, String labeldFilePath, File inputRawFile) {
+	public ArrayList<IndicatorVector> outputCIVVectors(ArrayList<WindowFeature> features, String labeldFilePath, File inputRawFile) {
+		
+		ArrayList<IndicatorVector> indicatorVectors=new ArrayList<IndicatorVector>();
 		try {
 			//read the labeled lines from the old feature file
-			ArrayList<ArrayList<Integer>> labeledLines=AccelerometerFileProcessing.transferLabeledFeatureFiles(labeldFilePath);
+			ArrayList<ArrayList<Integer>> labeledLines=AccelerometerFileProcessing.keepCIVClass(labeldFilePath);
 						
-			FileWriter fw=new FileWriter(labeldFilePath);
+			String line, classString="";
+			ArrayList<Double> featureValues=new ArrayList<Double>();
 			
 			// add the groundtruth
-			Scanner sc=new Scanner(inputRawFile);
-			String line=sc.nextLine().trim();
-			if(line.startsWith("@")){
-				fw.write(line+"\n");
+			if(inputRawFile!=null){
+				Scanner sc=new Scanner(inputRawFile);
+				line=sc.nextLine().trim();
+				if(line.startsWith("@")){
+					//fw.write(line+"\n");
+				}
+				sc.close();
 			}
-			sc.close();
 			
 			// write the header first			
 			/*sc = new Scanner(new File(Constants.ACCELEROMETER_CIV_FEATURES_DIR+"arff_header.txt"));
@@ -373,13 +392,16 @@ public class FeatureExtraction {
 			
 			int scope=conf.scope; // K/2 preceding windows and K/2 trailing windows
 			
-			ArrayList<AccelerometerFeature> previousWindows=new ArrayList<AccelerometerFeature>();
-			for(AccelerometerFeature curWindow: features){
-				
+			ArrayList<WindowFeature> previousWindows=new ArrayList<WindowFeature>();
+			String timeInHMS;
+			for(WindowFeature curWindow: features){
+				featureValues.clear();
 				previousWindows.add(curWindow);
 				if(previousWindows.size()==scope+1){
 					
-					line=CommonUtils.secondsToHMS(previousWindows.get(scope/2).timeIndex);
+					timeInHMS=CommonUtils.secondsToHMS(previousWindows.get(scope/2).timeIndex);
+					
+					line=timeInHMS;
 					int[] precedingOrTrailing={0, scope/2+1};
 					for(int j=0;j<precedingOrTrailing.length;j++){
 						double[] variDiff=new double[scope/2];
@@ -387,52 +409,75 @@ public class FeatureExtraction {
 						//add the mean and variance of the values of the neighboring K/2 windows
 						for(int i=precedingOrTrailing[j];i<precedingOrTrailing[j]+scope/2;i++){
 							//the variance diff. between two halves of the window
-							AccelerometerFeature window=previousWindows.get(i);
+							WindowFeature window=previousWindows.get(i);
 							ArrayList<Double> acclList=window.varianceSeries.get(Constants.AXIS_AGG);
 							variDiff[i-precedingOrTrailing[j]]=acclList.get(1)-acclList.get(0);
 							avgAccel[i-precedingOrTrailing[j]]=acclList.get(2);
 						}
 						double avg=mean.evaluate(variDiff);
 						line+=","+String.format("%7.3f", avg); //add the avg. of the variDiff
-						line+=","+String.format("%7.3f", variance.evaluate(variDiff, avg)); // add the var. of the variDiff
-						
+						featureValues.add(avg);
+						double variOfVari=variance.evaluate(variDiff, avg);
+						line+=","+String.format("%7.3f", variOfVari); // add the var. of the variDiff
+						featureValues.add(variOfVari);
+												
 						avg=mean.evaluate(avgAccel);
 						line+=","+String.format("%7.3f", avg); //add the avg. of the avg
-						line+=","+String.format("%7.3f", variance.evaluate(avgAccel, avg)); // add the var. of the avg
+						featureValues.add(avg);
+						double variOfAvg=variance.evaluate(avgAccel, avg);
+						line+=","+String.format("%7.3f", variOfAvg); // add the var. of the avg
+						featureValues.add(variOfAvg);
 						
 						if(j==0){//add the value of the center window
 							ArrayList<Double> acclList=previousWindows.get(scope/2).varianceSeries.get(Constants.AXIS_AGG);
 							line+=","+String.format("%7.3f", acclList.get(1)-acclList.get(0));
+							featureValues.add(acclList.get(1)-acclList.get(0));
 						}
 					}
 					//add the label to the line
 					boolean labeled=false;
 					for(int i=0;i<2;i++){
 						if(labeledLines.get(i).contains(previousWindows.get(scope/2).timeIndex)){
-							if(i==Constants.UNPARKING_ACTIVITY) line+=",u\n";
-							else line+=",p\n";
+							if(i==Constants.UNPARKING_ACTIVITY){
+								line+=",u\n";
+								classString="u";
+							}
+							else{
+								line+=",p\n";
+								classString="p";
+							}
+							
 							labeled=true;
 							break;
 						}
 					}
-					if(labeled==false) line+=",n\n";
-					fw.append(line);
+					if(labeled==false){
+						line+=",n\n";
+						classString="n";
+					}
+					
+					//fw.append(line);
+					
+					indicatorVectors.add(new IndicatorVector(timeInHMS, 
+							CommonUtils.doubleListToDoubleArray(featureValues),
+							Fusion.INDICATOR_CIV, classString));
 					previousWindows.remove(0); // remove the first window
 				}			
 			}
-			fw.close();
-			System.out.println("Arff file was written to "+labeldFilePath);
+			//fw.close();
+			System.out.println(indicatorVectors.size()+" CIV indicator vectors extracted.");
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+		return indicatorVectors;
 	}
 	
 	
 	//output the features to a file
-	public void outputToAFile(ArrayList<AccelerometerFeature> features, String outputFileName){
+	public void outputToAFile(ArrayList<WindowFeature> features, String outputFileName){
 		try{
 			FileWriter fw=new FileWriter(outputFileName);
-			for(AccelerometerFeature feature: features){
+			for(WindowFeature feature: features){
 				int timestamp=feature.timeIndex;
 				
 				//if this timestamp (or its neighbor) is labeled in the feature file
@@ -449,9 +494,9 @@ public class FeatureExtraction {
 					String label=eventsTimestamps.get(key);
 					if(label.equals("o")) event="p";
 					if(label.equals("i")) event="u";
-					fw.write(feature.asStringForVarianceChange(4)+event+"\n");
+					fw.write(feature.toString(4)+event+"\n");
 				}else{
-					fw.write(feature.asStringForVarianceChange(4)+"\n");
+					fw.write(feature.toString(4)+"\n");
 				}
 			}
 			fw.close();

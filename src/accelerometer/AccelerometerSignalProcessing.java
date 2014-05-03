@@ -1,6 +1,5 @@
 package accelerometer;
 
-import java.awt.print.Printable;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
@@ -22,14 +21,16 @@ import weka.filters.unsupervised.attribute.MergeTwoValues;
 import com.google.common.io.Files;
 
 import datastructure.UPActivitiesOfSameSource;
+import datastructure.UPActivity.SOURCE;
 
-import fusion.ProcessingForFusion;
+import fusion.Fusion;
+import fusion.IndicatorVector;
 
 import main.CommonUtils;
 import main.Constants;
 import main.EventClassifier;
-import accelerometer.feature.AccelerometerFeature;
-import accelerometer.feature.FeatureExtraction;
+import accelerometer.feature.WindowFeature;
+import accelerometer.feature.WindowFeatureExtraction;
 
 //test112
 public class AccelerometerSignalProcessing {
@@ -46,25 +47,21 @@ public class AccelerometerSignalProcessing {
 		
 		String folderOfAllRawFiles=Constants.ACCELEROMETER_RAW_DATA_DIR
 				+Constants.PHONE_POSITIONS[Constants.PHONE_POSITION_ALL]+"/test/";
-		String[] allRawFiles=getPathForAllFiles(
-				new File(folderOfAllRawFiles));		
+		String[] allRawFiles=getPathForAllFiles(new File(folderOfAllRawFiles));		
 		
-		
-		String[] singleFile=new String[1]; 
-		//singleFile[0]=folderOfAllRawFiles+"ACCELEROMETER_RAW_2013_11_011.log";
-		singleFile[0]=Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log";
 		
 		//generateVectorsOfMSTIndicator(singleFile);
 		
-		detectedEvents.clear();
-		detectedEvents.add(new ArrayList<String>());
-		detectedEvents.add(new ArrayList<String>());
-		detectByMSTViaGoogleAPI("2014_05_012");
-		
+		////2014_05_012
+		String[] dateSeqs=new String[]{"2014_04_200"}; //, "2014_04_201"};
+		//detectByMST(dateSeqs, MST_SOURCE.GOOGLE_API);
+		detectByCIV(dateSeqs, new Config(10, 3));
 		
 		//generateVectorsOfCIVIndicator(Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log", 10, 3);
 		
 		//generateVectorsOfCIVIndicator(Constants.PHONE_POSITION_ALL, 10, 3);
+		
+		
 		//testWindowSizeOrScopeForCIVIndicator(Constants.PHONE_POSITION_ALL, new int[]{2,6,10,14,18,22,26});
 	}
 	
@@ -96,9 +93,9 @@ public class AccelerometerSignalProcessing {
 			System.out.println("********* "+ filepath +" ***************");
 
 			// step 1: extract motion state features
-			FeatureExtraction fe=new FeatureExtraction(config, new File(filepath) );
+			WindowFeatureExtraction fe=new WindowFeatureExtraction(config, new File(filepath) );
 			System.out.println("step 1:  --> Extract Features and output the ARFF File");
-			ArrayList<AccelerometerFeature> features=fe.run();
+			ArrayList<WindowFeature> features=fe.run();
 			
 			//step 2: classify motion state and record detected events;
 			String inputFileNameInDateFormat=CommonUtils.getFileName(filepath).replace("ACCELEROMETER_RAW_", "").replace(".log", "");
@@ -194,18 +191,7 @@ public class AccelerometerSignalProcessing {
 		generateVectorsOfCIVIndicator(inputFiles, config);
 	}
 	
-	public static void generateVectorsOfCIVIndicator(String[] filePaths, Config config){
-
-		//no need of this step if the feature files exist
-		for(String filepath: filePaths ){
-			FeatureExtraction fe=new FeatureExtraction(config, new File(filepath));
-			fe.run(); //convert the raw data to arff files 
-			System.out.println();
-		}
-		//ProcessingForFusion.fusion();
-		//detectByCIVClassifier(phonePosDirIdx);//classify the files in the "test" folder under the position folder
-		//allTPs.add("neighborSize="+neighborSize[i]+"  :  "+Arrays.toString(tps));
-	}
+	
 	
 	public static void testWindowSizeOrScopeForCIVIndicator(int phonePosDirIdx, int[] scopeArray){
 		/*int[] windowSize={6, 10, 20, 30};
@@ -256,7 +242,7 @@ public class AccelerometerSignalProcessing {
 		for(int i=0;i<fns.length; i++){
 			//String fn=Constants.ACCELEROMETER_RAW_DATA_DIR+"all/"+fns[i]+".log";
 			String fn="C:/Users/Shuo/Desktop/"+fns[i]+".log";
-			FeatureExtraction fe=new FeatureExtraction(config, new File(fn) );
+			WindowFeatureExtraction fe=new WindowFeatureExtraction(config, new File(fn) );
 			System.out.println("step 1:  --> Extract Features and output the ARFF File");
 			fe.run();	
 			System.out.println();
@@ -411,42 +397,100 @@ public class AccelerometerSignalProcessing {
 	}
 	
 	/**
-	 * Weka trained method
-	 * This classifier treats each accelerometer reading as an instance
-	 */	
-	//step 0: Minimally Labeled Accelerometer File	
-	public static void activityTransitionByWekaAccelerometer(String fn){
-		System.out.println("Weka Accelerometer");
-		System.out.println("step 1:  --> Complete Labeled Accelerometer File");
-		AccelerometerFileProcessing.createWekaInputFile(
-		Constants.ACCELEROMETER_RAW_DATA_DIR+"accelerometer"+fn+".log"
-		, Constants.ACCELEROMETER_RAW_DATA_DIR+"accelerometer"+fn+".arff"
-		, false);
-		System.out.println();
-		
-		System.out.println("step 2:  --> EventClassifier to output classified activities"); 
-		EventClassifier.run(false,Constants.CLASSIFIER_ACCEL_RAW, new String[]{"accelerometer"+fn+".arff"}, "RandomForest", 0);
-		System.out.println();
-		
-		System.out.println("step 3:  --> EventDetection to output events");
-		if(EventDetection.setupFolderAndFieldIdx("Weka"))
-			//EventDetection.detectEvents(fn, EventDetection.groundTruth);
-		System.out.println();
+	 * take raw acclerometer file as input
+	 * output civ vector
+	 */
+	public static void generateVectorsOfCIVIndicator(String[] dateSeqs, Config config){
+		for(String dateSeq: dateSeqs ){
+			String filepath=Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_"+dateSeq+".log";
+			WindowFeatureExtraction fe=new WindowFeatureExtraction(config, new File(dateSeq));
+			ArrayList<WindowFeature> vectorsOfCIV=fe.run(); 
+			
+		}
+		//ProcessingForFusion.fusion();
+		//detectByCIVClassifier(phonePosDirIdx);//classify the files in the "test" folder under the position folder
+		//allTPs.add("neighborSize="+neighborSize[i]+"  :  "+Arrays.toString(tps));
 	}
+	
+	/**
+	 * take raw accelerometer file
+	 * return mst vectors that are generated by motion state classifier
+	 */
+	public static void generateVectorsOfMSTWekaClassifier(String[] dateSeqs){
+		System.out.println("Weka Accelerometer");
+		for(String fn: dateSeqs){
+			System.out.println("step 1:  --> Complete Labeled Accelerometer File");
+			AccelerometerFileProcessing.createWekaInputFile(
+			Constants.ACCELEROMETER_RAW_DATA_DIR+"accelerometer"+fn+".log"
+			, Constants.ACCELEROMETER_RAW_DATA_DIR+"accelerometer"+fn+".arff"
+			, false);
+			System.out.println();
+			
+			System.out.println("step 2:  --> EventClassifier to output classified activities"); 
+			EventClassifier.run(false,Constants.CLASSIFIER_ACCEL_RAW, new String[]{"accelerometer"+fn+".arff"}, "RandomForest", 0);
+			System.out.println();
+		
+			System.out.println();
+		}
+	}
+	
+	public static void detectByCIV(String[] dateSeqs, Config config){
+		UPActivitiesOfSameSource allGroundtruth=new UPActivitiesOfSameSource(SOURCE.GROUND_TRUTH);
+		UPActivitiesOfSameSource allDetected=new UPActivitiesOfSameSource(SOURCE.FUSION_DETECTION);
+		
+		for(String dateSeq: dateSeqs ){
+			String filepath=Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_"+dateSeq+".log";
+			UPActivitiesOfSameSource groundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(
+					new String[]{filepath});
+			allGroundtruth.addAll(groundtruth);
+			
+			WindowFeatureExtraction wfe=new WindowFeatureExtraction(config, new File(filepath));
+			ArrayList<IndicatorVector> indicatorVectors=wfe.outputCIVVectors(wfe.extractFeature(wfe.inputFile), null, null);
+			wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
+			UPActivitiesOfSameSource eventsByCIV=Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), 0.6);
+			allDetected.addAll(eventsByCIV);
+		}
+		EventDetection.calculatePerformance( allDetected, allGroundtruth, 5);
+	}
+	
+	
 	
 	/*
 	 * GoogleAPI  method
 	 */
-	
-	public static void detectByMSTViaGoogleAPI(String dateSeq){
-		System.out.println("*********** Google API Detection *****************");
-		UPActivitiesOfSameSource groundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(
-	new String[]{Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_"+dateSeq+".log"});
-		
-		if(EventDetection.setupFolderAndFieldIdx("google")){
-			UPActivitiesOfSameSource eventsByGoogleAPI =EventDetection.findMotionStateTransition(dateSeq);
-			EventDetection.calculatePrecisionAndRecall(eventsByGoogleAPI, groundtruth);
+	public enum MST_SOURCE{
+		GOOGLE_API, WEKA_CLASSIFIER;
+	}
+	public static void detectByMST(String[] dateSeqs, MST_SOURCE mstSource){
+		switch(mstSource){
+		case GOOGLE_API:
+			System.out.println("*********** MST Detection via Google API *****************");
+			break;
+		case WEKA_CLASSIFIER:
+			System.out.println("*********** MST Detection via Weka Classifier *****************");
+			break;
+		default:
+			System.err.println("Error: Unknown MST source");
+			if(true) return;
+			break;
 		}
+		
+		System.out.println("******  "+Arrays.toString(dateSeqs)+" ******");
+		UPActivitiesOfSameSource allGroundtruth=new UPActivitiesOfSameSource(SOURCE.GROUND_TRUTH);
+		UPActivitiesOfSameSource allDetected=new UPActivitiesOfSameSource(SOURCE.GOOGLE_API);
+		for(String dateSeq: dateSeqs){
+			UPActivitiesOfSameSource groundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(
+					new String[]{Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_"+dateSeq+".log"});
+			if(EventDetection.setupParametersForMST("google")){
+				UPActivitiesOfSameSource eventsByGoogleAPI =EventDetection.findMotionStateTransition(dateSeq);
+				//EventDetection.calculatePerformance(eventsByGoogleAPI, groundtruth);
+	
+				allGroundtruth.addAll(groundtruth);
+				allDetected.addAll(eventsByGoogleAPI);
+			}
+		}
+		EventDetection.calculatePerformance( allDetected, allGroundtruth);
+		
 		System.out.println();
 	}
 	

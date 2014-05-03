@@ -31,6 +31,17 @@ public class UPActivitiesOfSameSource {
 		return events.get(type);
 	}
 	
+	public void addAll(UPActivitiesOfSameSource other){
+		if(source!=other.source){
+			System.err.println("cannot add to the list: incompatible source");
+			return;
+		}
+		for(int i=0;i<2;i++){
+			events.get(i).addAll(other.events.get(i));
+		}
+		//sort();
+	}
+	
 	public void add(UPActivity activity){
 		if(source!=activity.source){
 			System.err.println("cannot add to the list: incompatible source");

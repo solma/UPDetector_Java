@@ -118,11 +118,12 @@ public class AccelerometerFileProcessing {
 	 * In the case when features are changed
 	 * Read u/p labels from the labeled file with old features 
 	 */
-	public static ArrayList<ArrayList<Integer>> transferLabeledFeatureFiles(String labeledFeatureFilePath){
+	public static ArrayList<ArrayList<Integer>> keepCIVClass(String labeledFeatureFilePath){
 		ArrayList<ArrayList<Integer>> labeledLines=new ArrayList<ArrayList<Integer>>();
 		labeledLines.add(new ArrayList<Integer>()); 
 		labeledLines.add(new ArrayList<Integer>()); 
 		try{
+			if(labeledFeatureFilePath==null) return labeledLines;
 			File inputFile=new File(labeledFeatureFilePath);
 			if(!inputFile.exists()) return labeledLines;
 		
@@ -158,7 +159,7 @@ public class AccelerometerFileProcessing {
 		String updateDurationsString="";
 		String lineInSecs="";
 		try{
-			ArrayList<ArrayList<Integer>> labeledLines=transferLabeledFeatureFiles(labeledFeatureFilePath);
+			ArrayList<ArrayList<Integer>> labeledLines=keepCIVClass(labeledFeatureFilePath);
 			
 			//scan through labelLines, remove lines that have close timestamps
 			for(int i=0;i<2;i++){
