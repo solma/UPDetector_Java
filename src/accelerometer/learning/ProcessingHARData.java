@@ -1,4 +1,4 @@
-package accelerometer.motionstate;
+package accelerometer.learning;
 
 import helper.Constants;
 

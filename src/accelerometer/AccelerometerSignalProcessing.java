@@ -30,9 +30,9 @@ import datastructure.UPActivity.SOURCE;
 import fusion.Fusion;
 import fusion.IndicatorVector;
 
-import accelerometer.feature.WindowFeature;
-import accelerometer.feature.WindowFeatureExtraction;
 import accelerometer.learning.EventClassifier;
+import accelerometer.windowfeature.WindowFeature;
+import accelerometer.windowfeature.WindowFeatureExtraction;
 
 //test112
 public class AccelerometerSignalProcessing {

@@ -29,7 +29,7 @@ import weka.filters.Filter;
 import weka.filters.supervised.attribute.AddClassification;
 import accelerometer.AccelerometerSignalProcessing;
 import accelerometer.EventDetection;
-import accelerometer.feature.WindowFeature;
+import accelerometer.windowfeature.WindowFeature;
 
 //reference: https://svn.cms.waikato.ac.nz/svn/weka/branches/stable-3-6/wekaexamples/src/main/java/wekaexamples/classifiers/WekaDemo.java
 public class EventClassifier {

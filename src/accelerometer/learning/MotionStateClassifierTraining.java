@@ -7,8 +7,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 import accelerometer.Config;
-import accelerometer.feature.WindowFeature;
-import accelerometer.feature.WindowFeatureExtraction;
+import accelerometer.windowfeature.WindowFeature;
+import accelerometer.windowfeature.WindowFeatureExtraction;
 
 public class MotionStateClassifierTraining {
 	public static void main(String[] args){

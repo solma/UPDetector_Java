@@ -1,4 +1,4 @@
-package accelerometer.feature;
+package accelerometer.windowfeature;
 
 import helper.CommonUtils;
 import helper.Constants;
