@@ -1,5 +1,6 @@
 package audio;
 
+import helper.Constants;
 import jAudioFeatureExtractor.CommandLineThread;
 import jAudioFeatureExtractor.DataModel;
 import jAudioFeatureExtractor.ACE.DataTypes.Batch;
@@ -18,8 +19,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Scanner;
 
-import main.Constants;
-import main.EventClassifier;
+import accelerometer.learning.EventClassifier;
+
 
 public class AudioSignalProcessing {
 	

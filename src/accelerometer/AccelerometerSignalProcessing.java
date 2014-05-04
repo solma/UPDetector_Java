@@ -1,5 +1,8 @@
 package accelerometer;
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
@@ -27,11 +30,9 @@ import datastructure.UPActivity.SOURCE;
 import fusion.Fusion;
 import fusion.IndicatorVector;
 
-import main.CommonUtils;
-import main.Constants;
-import main.EventClassifier;
 import accelerometer.feature.WindowFeature;
 import accelerometer.feature.WindowFeatureExtraction;
+import accelerometer.learning.EventClassifier;
 
 //test112
 public class AccelerometerSignalProcessing {

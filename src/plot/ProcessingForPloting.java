@@ -1,5 +1,8 @@
 package plot;
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -13,8 +16,6 @@ import org.apache.commons.math3.analysis.solvers.BracketedUnivariateSolver;
 
 import com.google.common.base.Objects.ToStringHelper;
 
-import main.CommonUtils;
-import main.Constants;
 
 /**
  * a class contains miscellaneous I/O functions

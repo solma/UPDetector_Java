@@ -1,10 +1,11 @@
 package datastructure;
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import main.CommonUtils;
-import main.Constants;
 
 import com.google.common.base.Objects.ToStringHelper;
 

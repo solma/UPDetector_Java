@@ -1,7 +1,7 @@
 package fusion;
 
 
-import main.Constants;
+import helper.Constants;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
 

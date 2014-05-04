@@ -1,5 +1,8 @@
 package fusion;
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,8 +10,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
 
-import main.CommonUtils;
-import main.Constants;
 
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 

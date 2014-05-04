@@ -1,8 +1,9 @@
 package audio;
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.util.Random;
 
-import main.CommonUtils;
-import main.Constants;
 //reference: http://coding.ihunda.com/voicelocktrac/browser/Android/Unlocker/src/com/ihunda/android/sco
 
 // compare between JTransforms and Apache Commons Math (ACM): https://sites.google.com/site/musicaudiohp/performance/jtransforms-vs-apache-commons-math

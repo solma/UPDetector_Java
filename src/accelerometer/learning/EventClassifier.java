@@ -1,4 +1,7 @@
-package main;
+package accelerometer.learning;
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
+
 
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;

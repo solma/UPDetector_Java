@@ -1,5 +1,7 @@
 package accelerometer.motionstate;
 
+import helper.Constants;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -8,7 +10,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
 
-import main.Constants;
 
 /*
 1 WALKING

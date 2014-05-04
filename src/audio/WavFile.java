@@ -10,11 +10,12 @@ package audio;
 
 //Version 1.0
 
+import helper.Constants;
+
 import java.io.*;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
-import main.Constants;
 
 public class WavFile
 {

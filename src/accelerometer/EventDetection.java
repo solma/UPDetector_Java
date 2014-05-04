@@ -1,5 +1,8 @@
 package accelerometer;
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.io.File;
 import java.io.ObjectInputStream.GetField;
 import java.lang.reflect.Array;
@@ -12,9 +15,6 @@ import java.util.Scanner;
 
 import javax.rmi.CORBA.Util;
 
-import main.Constants;
-import main.ParkSense;
-import main.CommonUtils;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 

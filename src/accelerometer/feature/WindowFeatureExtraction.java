@@ -1,5 +1,8 @@
 package accelerometer.feature;
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -7,8 +10,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 
-import main.CommonUtils;
-import main.Constants;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;

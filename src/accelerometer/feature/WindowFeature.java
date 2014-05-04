@@ -1,11 +1,12 @@
 package accelerometer.feature;
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.util.ArrayList;
 
 import accelerometer.Config;
 
-import main.Constants;
-import main.CommonUtils;
 
 public class WindowFeature {
 

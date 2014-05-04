@@ -1,6 +1,9 @@
 package accelerometer;
 
 
+import helper.CommonUtils;
+import helper.Constants;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -12,8 +15,6 @@ import javax.sound.sampled.Line;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 
-import main.Constants;
-import main.CommonUtils;
 import com.google.common.base.*;
 /*
  * A class that process accelerometer data for differing purposes

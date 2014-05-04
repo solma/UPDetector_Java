@@ -1,11 +1,12 @@
-package accelerometer;
+package accelerometer.learning;
+
+import helper.Constants;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import main.Constants;
-import main.EventClassifier;
+import accelerometer.Config;
 import accelerometer.feature.WindowFeature;
 import accelerometer.feature.WindowFeatureExtraction;
 

@@ -1,5 +1,5 @@
 package fusion;
-import main.CommonUtils;
+import helper.CommonUtils;
 
 
 public class IndicatorVector{
