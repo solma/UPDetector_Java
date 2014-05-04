@@ -18,11 +18,12 @@ import javax.rmi.CORBA.Util;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 
+import upactivity.UPActivitiesOfSameSource;
+import upactivity.UPActivity;
+import upactivity.UPActivity.SOURCE;
+
 import com.google.common.primitives.Doubles;
 
-import datastructure.UPActivitiesOfSameSource;
-import datastructure.UPActivity;
-import datastructure.UPActivity.SOURCE;
 
 
 public class EventDetection {

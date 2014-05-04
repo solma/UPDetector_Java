@@ -13,9 +13,10 @@ import java.util.Scanner;
 
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
-import datastructure.UPActivitiesOfSameSource;
-import datastructure.UPActivity;
-import datastructure.UPActivity.SOURCE;
+import upactivity.UPActivitiesOfSameSource;
+import upactivity.UPActivity;
+import upactivity.UPActivity.SOURCE;
+
 
 
 import accelerometer.AccelerometerSignalProcessing;

@@ -18,14 +18,14 @@ import javax.naming.directory.DirContext;
 import org.apache.commons.math3.analysis.function.Cos;
 import org.math.io.StringPrintable;
 
+import upactivity.UPActivitiesOfSameSource;
+import upactivity.UPActivity.SOURCE;
 import weka.attributeSelection.GainRatioAttributeEval;
 import weka.filters.supervised.instance.StratifiedRemoveFolds;
 import weka.filters.unsupervised.attribute.MergeTwoValues;
 
 import com.google.common.io.Files;
 
-import datastructure.UPActivitiesOfSameSource;
-import datastructure.UPActivity.SOURCE;
 
 import fusion.Fusion;
 import fusion.IndicatorVector;
