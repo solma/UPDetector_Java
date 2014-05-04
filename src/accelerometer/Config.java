@@ -35,7 +35,7 @@ public class Config {
 	 */
 		
 	public static int WINDOW_SIZE=10;
-	public static int SCOPE=16;
+	public static int SCOPE=6; //to be same as in android app
 	public static int NO_OF_BINS=5;// for motion state classification features
 	public static int SLIDING_STEP=3; //in seconds	
 	

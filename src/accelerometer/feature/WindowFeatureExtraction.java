@@ -29,7 +29,7 @@ public class WindowFeatureExtraction {
 		//config.minNoOfSamplesInWholeWindow=200;
 		WindowFeatureExtraction fe=new WindowFeatureExtraction(config, new File(Constants.ACCELEROMETER_RAW_DATA_DIR+"all_position/ACCELEROMETER_RAW_2013_10_251.log") );
 		System.out.println("step 1:  --> Extract Features and output the ARFF File");
-		ArrayList<WindowFeature> features=fe.run();
+		
 	}
 	
 	public Config conf;
@@ -49,34 +49,24 @@ public class WindowFeatureExtraction {
 		eventsTimestamps=new HashMap<Integer, String>();
 	}	
 
-	public ArrayList<WindowFeature> run(){
-		ArrayList<WindowFeature> features=extractFeature(inputFile);
-		
-		String outputFilePath="";
-		if(conf.motionStateFeature==false){//output features for CIV indicator
-			
-		}else{//out features for detecting motion states 
-			if(conf.singleMotionStateOnly){
-				outputFilePath=Constants.ACCELEROMETER_STATE_FEATURES_DIR+"driving.arff";
-			}else{
-				outputFilePath=Constants.ACCELEROMETER_STATE_FEATURES_DIR+inputFile.getName().replace("RAW", "STATE_FEATURE").replace(".log", ".arff");;
-			}
-			
-			try{				
-				if(conf.singleMotionStateOnly){
-					//save features to a file
-					FileWriter fw=new FileWriter(outputFilePath, true);
-					for(WindowFeature feature: features){
-						fw.append(feature.asMotionStateFeatures()+",Still\n");
-					}
-					fw.close();
-				}
-			}catch(Exception ex){
-				ex.printStackTrace();
-			}
-		}
-		return features;
+	/*if(conf.singleMotionStateOnly){
+		outputFilePath=Constants.ACCELEROMETER_STATE_FEATURES_DIR+"driving.arff";
+	}else{
+		outputFilePath=Constants.ACCELEROMETER_STATE_FEATURES_DIR+inputFile.getName().replace("RAW", "STATE_FEATURE").replace(".log", ".arff");;
 	}
+	
+	try{				
+		if(conf.singleMotionStateOnly){
+			//save features to a file
+			FileWriter fw=new FileWriter(outputFilePath, true);
+			for(WindowFeature feature: features){
+				fw.append(feature.asMotionStateFeatures()+",Still\n");
+			}
+			fw.close();
+		}
+	}catch(Exception ex){
+		ex.printStackTrace();
+	}*/
 
 	public void saveIndicatorVectorToFile(ArrayList<IndicatorVector> indicatorVectors, String dateSeq){
 		String outputFilePath=Constants.ACCELEROMETER_FUSION_DIR;
@@ -136,7 +126,7 @@ public class WindowFeatureExtraction {
 	 * @param inputFile: raw accelerometer file
 	 * @return
 	 */
-	public ArrayList<WindowFeature> extractFeature(File inputFile){
+	public ArrayList<WindowFeature> run(){
 		ArrayList<WindowFeature> features=new ArrayList<WindowFeature>();
 		try{
 			Scanner sc=new Scanner(inputFile);
@@ -399,7 +389,7 @@ public class WindowFeatureExtraction {
 				previousWindows.add(curWindow);
 				if(previousWindows.size()==scope+1){
 					
-					timeInHMS=CommonUtils.secondsToHMS(previousWindows.get(scope/2).timeIndex);
+					timeInHMS=CommonUtils.secondsToHMS(previousWindows.get(previousWindows.size()-1).temporalWindow[1]);
 					
 					line=timeInHMS;
 					int[] precedingOrTrailing={0, scope/2+1};

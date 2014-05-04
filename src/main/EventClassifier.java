@@ -282,11 +282,11 @@ public class EventClassifier {
 					//System.out.println(secondsOfADay+"  "+pred);
 					dateSeq=CommonUtils.getFileName(pathOfFeatureFile).replace("ACCELEROMETER_FEATURE_", "").replace(".arff", "");
 					if(pred.equals("p") ){
-	                	AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+	                	//AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 					}else{
 						if(pred.equals("u")){
 							//System.out.println(ParkSense.detectedEvents.size());
-							AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+							//AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 						}
 					}
 					
@@ -336,12 +336,14 @@ public class EventClassifier {
 					//detected
 					if(i==Constants.PARKING_ACTIVITY) System.out.println("Deteced Parking events:");
 					else System.out.println("Deteced Unparking events:");
-					for(String timestamp: AccelerometerSignalProcessing.detectedEvents.get(i)){
+					
+					/*for(String timestamp: AccelerometerSignalProcessing.detectedEvents.get(i)){
 						if(timestamp.contains(dateSeq)){
 							String time=timestamp.split("-")[1];
 							System.out.printf("%s(%5d), ", time, CommonUtils.HMSToSeconds(time));
 						}
-					}
+					}*/
+					
 					System.out.println();
 				}
 			}
@@ -577,13 +579,16 @@ public class EventClassifier {
 	
 	/**
 	 * 
-	 * @param inputFileNameInDateFormat
+	 * @param dateSeq
 	 * @param features
 	 * @return vectors of MotionStateTransition Indicator
 	 */
-	public static ArrayList<String> classifyMotionStates(String inputFileNameInDateFormat,ArrayList<WindowFeature> features){
+	public static ArrayList<String> classifyMotionStates(String dateSeq,ArrayList<WindowFeature> features){
 		ArrayList<String> vectorsOfMSTIndicator=new ArrayList<String>();
+		String date=dateSeq.substring(0, 10);
 		try{
+			String ouputfilePath=Constants.ACCELEROMTER_ACTIVITY_WEKA_DIR+"WEKA_"+dateSeq+".arff";
+			FileWriter fw=new FileWriter(ouputfilePath);
 			//build an instance and classify
 			Classifier mClassifier = (Classifier)SerializationHelper.read(
 					Constants.ACCELEROMETER_STATE_FEATURES_DIR+"model/RandomForest.model");
@@ -635,31 +640,35 @@ public class EventClassifier {
 				}
 				prevProbDistri=Arrays.copyOf(probDistri, probDistri.length);
 				
-				
+				fw.write(date+" " + CommonUtils.secondsToHMS(secondsOfADay)+" "+curState
+				//+feature.asMotionStateFeatures()
+				+"\n");
 				
 				//System.out.println(secondsOfADay+"  "+pred);
-				HashSet<String> drivingStateClass=new HashSet<String>();
-				drivingStateClass.add("Driving");
+				HashSet<String> drivingStateEquivalentClass=new HashSet<String>();
+				drivingStateEquivalentClass.add("Driving");
 				//drivingStateClass.add("Still");
 				
-				HashSet<String> walkingStateClass=new HashSet<String>();
+				HashSet<String> walkingStateEquivalentClass=new HashSet<String>();
 				//walkingStateClass.add("Jogging");
-				walkingStateClass.add("Walking");
+				walkingStateEquivalentClass.add("Walking");
 				//walkingStateClass.add("Upstairs");
 				//walkingStateClass.add("Downstairs");
 				
 				//add detected events
-				if(walkingStateClass.contains(curState)&&drivingStateClass.contains(prevState)){
+				if(walkingStateEquivalentClass.contains(curState)&&drivingStateEquivalentClass.contains(prevState)){
 						System.out.println("Parking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
-						AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING_ACTIVITY).add(inputFileNameInDateFormat+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+						//AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 				}else{
-					if(drivingStateClass.contains(curState)&&walkingStateClass.contains(prevState)){
+					if(drivingStateEquivalentClass.contains(curState)&&walkingStateEquivalentClass.contains(prevState)){
 						System.out.println("Unparking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
-						AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(inputFileNameInDateFormat+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+						//AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
 					}
 				}
 				prevState=curState;
 			}
+			System.out.println("weka classified motion states ouputs to "+ouputfilePath);
+			fw.close();
 		}catch(Exception ex){
 			ex.printStackTrace();
 		}	
@@ -723,8 +732,6 @@ public class EventClassifier {
 	 */
 	public static void classifySingleFile(){
 		
-		AccelerometerSignalProcessing.detectedEvents.add(new ArrayList<String>());
-		AccelerometerSignalProcessing.detectedEvents.add(new ArrayList<String>());
 		int phonePosIdx=Constants.PHONE_POSITION_ALL;
 		run(false,Constants.CLASSIFIER_ACCEL_CIV_FEATURE, 
 				new String[]{"ACCELEROMETER_FEATURE_2013_11_201.arff"},

@@ -49,7 +49,7 @@ public class AccelerometerFileProcessing {
 				+"ACCELEROMETER_FEATURE_2013_11_011.arff");*/
 	}
 	
-	/*
+	/************************
 	 * This method reads a minimally (i.e. only at the edge points) activity (i.e. on_foot/in_vehicle) labeled 
 	 * accelerometer data file and automatically add activity labels for unlabeled readings. 
 	 * "o": on_foot
@@ -57,7 +57,7 @@ public class AccelerometerFileProcessing {
 	 * "s": still
 	 * "h": hold_in_hand_on_foot
 	 * @removeFilter: if set true, the output file cuts the date-time field of the input file
-	 */
+	 **********************************/
 	public static void createWekaInputFile(String inputFile, String outputFile, boolean removeFilter){
 		try{
 			String lastActivity="o";

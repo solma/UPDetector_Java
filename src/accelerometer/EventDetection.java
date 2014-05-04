@@ -39,9 +39,11 @@ public class EventDetection {
 	private static int TIMESTAMP_IDX=1;
 	
 	private static String ON_FOOT_ACTIVITY;
-	private static String HELD_IN_HAND_ON_FOOT_ACTIVITY="";	
+	private static String HELD_IN_HAND_ON_FOOT_ACTIVITY;	
 	private static String IN_VEHICLE_ACTIVITY;
 	
+	private static SOURCE SOURCE;
+	private static String FILE_NAME_PREFIX;
 	
 	private static String DELEMITER;
 	private static String FILE_EXTENSION;
@@ -100,9 +102,7 @@ public class EventDetection {
 			HashMap<UPActivity, ArrayList<UPActivity>> matches=new HashMap<UPActivity, ArrayList<UPActivity>>();
 			ArrayList<UPActivity> unmatchedDetectedEvents=new ArrayList<UPActivity>();
 			for(UPActivity detectedEvent: detected){
-				if(detectedEvent.timeInHMS.equals("16:10:30")){
-					boolean debug=true;
-				}
+				
 				UPActivity matchedTruth=detectedEvent.matchToGroundtruthEvent(truth, MATCH_TIME_DIFF_THRESHOLD );
 				if(matchedTruth!=null){
 					if(!matches.containsKey(matchedTruth)){
@@ -217,14 +217,19 @@ public class EventDetection {
 			}
 		}
 		if(ACTIVITY_DIR_Name==Constants.ACCELEROMTER_ACTIVITY_WEKA_DIR){
-			ACTIVITY_IDX=7;
-			ON_FOOT_ACTIVITY="o";
-			IN_VEHICLE_ACTIVITY="i";
-			HELD_IN_HAND_ON_FOOT_ACTIVITY="h";
-			DELEMITER=",";
+			SOURCE=SOURCE.MST_WEKA;
+			FILE_NAME_PREFIX="WEKA_";
+			ACTIVITY_IDX=2;
+			ON_FOOT_ACTIVITY="walking";
+			IN_VEHICLE_ACTIVITY="driving";
+			HELD_IN_HAND_ON_FOOT_ACTIVITY="walking";
+			DELEMITER=" ";
 			FILE_EXTENSION=".arff";
-			MATCH_TIME_DIFF_THRESHOLD=5;
+			MATCH_TIME_DIFF_THRESHOLD=30;
+			
 		}else{
+			SOURCE=SOURCE.MST_GOOGLE;
+			FILE_NAME_PREFIX="GOOGLE_ACTIVITY_";
 			TIMESTAMP_IDX=1;
 			ACTIVITY_IDX=2;
 			ON_FOOT_ACTIVITY="on_foot";
@@ -278,10 +283,10 @@ public class EventDetection {
      */
 	public static UPActivitiesOfSameSource findMotionStateTransition(String fileNameAsDateSeq){
 		
-		String fileName=ACTIVITY_DIR_Name+"GOOGLE_ACTIVITY_"+fileNameAsDateSeq+FILE_EXTENSION;
+		String fileName=ACTIVITY_DIR_Name+FILE_NAME_PREFIX+fileNameAsDateSeq+FILE_EXTENSION;
 		//Constants.ACCELEROMETER_BASE_DIR+"04202014/GOOGLE_ACTIVITY_UPDATE_2014_04_200.log";
-		
-		UPActivitiesOfSameSource eventsDetectedByGoogleAPI=new UPActivitiesOfSameSource(SOURCE.GOOGLE_API);
+		String line="";
+		UPActivitiesOfSameSource detected=new UPActivitiesOfSameSource(SOURCE);
 		try{
 			Scanner sc=new Scanner(new File(fileName));
 
@@ -292,8 +297,8 @@ public class EventDetection {
 			ArrayList<Integer> intervals=new ArrayList<Integer>();
 			int lastTimestamp=0;
 			while(sc.hasNextLine()){
-				String line=sc.nextLine();
-				String[] fields=line.split(DELEMITER);
+				line=sc.nextLine();
+				String[] fields=line.trim().split(DELEMITER);
 				String newOnFootOrInVehicleActivity=fields[ACTIVITY_IDX].toLowerCase();
 				
 				int curTime=CommonUtils.HMSToSeconds(fields[TIMESTAMP_IDX]);
@@ -311,7 +316,7 @@ public class EventDetection {
 				
 				//parking
 				if(isFromInVehicletoOnFoot(newOnFootOrInVehicleActivity, lastOnFootOrInVehicleActivity)) {
-					eventsDetectedByGoogleAPI.add(new UPActivity(SOURCE.GOOGLE_API, 
+					detected.add(new UPActivity(SOURCE, 
 							Constants.PARKING_ACTIVITY, fileNameAsDateSeq.substring(0, 10),
 							CommonUtils.cutField(fields[TIMESTAMP_IDX], ":", 0, 3, ":")
 							));
@@ -319,7 +324,7 @@ public class EventDetection {
 				
 				//unparking
 				if(isFromOnFoottoInVehicle(newOnFootOrInVehicleActivity, lastOnFootOrInVehicleActivity)){
-					eventsDetectedByGoogleAPI.add(new UPActivity(SOURCE.GOOGLE_API, 
+					detected.add(new UPActivity(SOURCE, 
 							Constants.UNPARKING_ACTIVITY, fileNameAsDateSeq.substring(0, 10),
 							CommonUtils.cutField(fields[TIMESTAMP_IDX], ":", 0, 3, ":")));
 				}
@@ -328,14 +333,15 @@ public class EventDetection {
 			}
 			
 			sc.close();
-			
+			System.out.println("Detected: "+ detected);
 			Mean mean=new Mean();
 			System.out.println(String.format("average activity update interval is %.2f", mean.evaluate(Doubles.toArray(intervals)) )+ " secs\n");
 			
 		}catch(Exception ex){
 			ex.printStackTrace();
+			System.out.println("error line: "+line);
 		}
-		return eventsDetectedByGoogleAPI;
+		return detected;
 	}
 	
 	

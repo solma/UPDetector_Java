@@ -25,6 +25,7 @@ import com.google.common.primitives.Doubles;
 public class CommonUtils {
 	public static void main(String[] args){
 
+		
 		Calendar c = Calendar.getInstance(); 
 		System.out.println(
 				c.get(Calendar.YEAR)+"-"+c.get(Calendar.MONTH)+"-"+c.get(Calendar.DAY_OF_MONTH)
@@ -46,7 +47,8 @@ public class CommonUtils {
 		System.out.println(calculatePDFOfNormalDistribution(0.06, 0.08, -0.001));
 		
 		System.out.println(new NormalDistribution(0.06, 0.08).density(-0.001));
-		//System.out.println(stringTimeToSeconds("18:06:34"));
+		
+		System.out.println(HMSToSeconds("16:10:30"));
 		//System.out.println(secondsToStringTime(65181));
 		//System.out.println(getDirectory("E:/workspace/android/ActivityRecognition/logs/weka/input/features2013_08_295.arff"));
 		//checkAccelerometerTrainingFile();

@@ -16,9 +16,11 @@ import com.google.common.base.Objects.ToStringHelper;
 public class UPActivity implements Comparable<UPActivity> {
 	
 	public enum SOURCE{
-		GROUND_TRUTH("Groundtruth"), GOOGLE_API("GoogleAPI"),
-		FUSION_DETECTION("Fusion_Result"), 
-		FUSION_AND_GOOGLE_API("Fusion_Result_Confirmed_By_GoogleAPI");
+		GROUND_TRUTH("Groundtruth"), 
+		MST_GOOGLE("MST_Google"), MST_WEKA("MST_WEKA"),
+		CIV("CIV"),
+		CIV_MST_WEKA("CIV_MST_WEKA"), 
+		CIV_MST_WEKA_AND_GOOGGLE("CIV_MST_WEKA_AND_GOOGGLE");
 		
 		String name;
 		

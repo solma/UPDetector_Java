@@ -627,8 +627,8 @@ public class Fusion {
 	public static UPActivitiesOfSameSource detectByIndicatorVectors(
 			ArrayList<IndicatorVector> indicatorVectors, String date,
 			double detectionThreshold) {
-		UPActivitiesOfSameSource detected = new UPActivitiesOfSameSource(
-				SOURCE.FUSION_DETECTION);
+		SOURCE source=SOURCE.CIV;
+		UPActivitiesOfSameSource detected = new UPActivitiesOfSameSource(source);
 		double curProb;
 		double[] outcomeLikelihood = new double[outcomes.length];
 		for (IndicatorVector iv : indicatorVectors) {
@@ -665,14 +665,14 @@ public class Fusion {
 				if (outcomeLikelihood[1] > outcomeLikelihood[2]) {// parking
 					if (outcomeLikelihood[1] > detectionThreshold) {
 						detected.get(Constants.PARKING_ACTIVITY).add(
-								new UPActivity(SOURCE.FUSION_DETECTION,
+								new UPActivity(source,
 										Constants.PARKING_ACTIVITY, date,
 										iv.timeInHMS, outcomeLikelihood[1]));
 					}
 				} else {// unparking
 					if (outcomeLikelihood[2] > detectionThreshold) {
 						detected.get(Constants.UNPARKING_ACTIVITY).add(
-								new UPActivity(SOURCE.FUSION_DETECTION,
+								new UPActivity(source,
 										Constants.UNPARKING_ACTIVITY, date,
 										iv.timeInHMS, outcomeLikelihood[2]));
 					}

@@ -33,7 +33,7 @@ public class UPActivitiesOfSameSource {
 	
 	public void addAll(UPActivitiesOfSameSource other){
 		if(source!=other.source){
-			System.err.println("cannot add to the list: incompatible source");
+			System.err.println("cannot add new list to the list: incompatible source");
 			return;
 		}
 		for(int i=0;i<2;i++){
@@ -44,7 +44,7 @@ public class UPActivitiesOfSameSource {
 	
 	public void add(UPActivity activity){
 		if(source!=activity.source){
-			System.err.println("cannot add to the list: incompatible source");
+			System.err.println("cannot add new activity to the list: incompatible source");
 			return;
 		}
 		events.get(activity.type).add(activity);
