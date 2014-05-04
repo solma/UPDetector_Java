@@ -1,4 +1,6 @@
 package accelerometer.learning;
+import fusion.Fusion;
+import fusion.IndicatorVector;
 import helper.CommonUtils;
 import helper.Constants;
 
@@ -587,8 +589,8 @@ public class EventClassifier {
 	 * @param features
 	 * @return vectors of MotionStateTransition Indicator
 	 */
-	public static ArrayList<String> classifyMotionStates(String dateSeq,ArrayList<WindowFeature> features){
-		ArrayList<String> vectorsOfMSTIndicator=new ArrayList<String>();
+	public static ArrayList<IndicatorVector> classifyMotionStatesAndReturnMSTVectors(String dateSeq,ArrayList<WindowFeature> features){
+		ArrayList<IndicatorVector> vectorsOfMSTIndicator=new ArrayList<IndicatorVector>();
 		String date=dateSeq.substring(0, 10);
 		try{
 			String ouputfilePath=Constants.ACCELEROMTER_ACTIVITY_WEKA_DIR+"WEKA_"+dateSeq+".arff";
@@ -608,7 +610,6 @@ public class EventClassifier {
 			
 			String prevState="";
 			double[] probDistri=null, prevProbDistri=null;
-			String vectorOfIndicator;
 			
 			
 			for(WindowFeature feature: features){
@@ -636,9 +637,8 @@ public class EventClassifier {
 				*/
 				
 				if(prevProbDistri!=null){
-					vectorOfIndicator=CommonUtils.secondsToHMS(secondsOfADay)
-							+","+prevProbDistri[0]+","+prevProbDistri[1]
-							+","+probDistri[0]+","+probDistri[1];				
+					double[] values={prevProbDistri[0],prevProbDistri[1],probDistri[0],probDistri[1]};
+					IndicatorVector vectorOfIndicator=new IndicatorVector(secondsOfADay, values, Fusion.INDICATOR_MST);				
 					//System.out.println(vectorOfIndicator);
 					vectorsOfMSTIndicator.add(vectorOfIndicator);
 				}
@@ -661,12 +661,10 @@ public class EventClassifier {
 				
 				//add detected events
 				if(walkingStateEquivalentClass.contains(curState)&&drivingStateEquivalentClass.contains(prevState)){
-						System.out.println("Parking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
-						//AccelerometerSignalProcessing.detectedEvents.get(Constants.PARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+						//System.out.println("Parking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
 				}else{
 					if(drivingStateEquivalentClass.contains(curState)&&walkingStateEquivalentClass.contains(prevState)){
-						System.out.println("Unparking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
-						//AccelerometerSignalProcessing.detectedEvents.get(Constants.UNPARKING_ACTIVITY).add(dateSeq+"-"+CommonUtils.secondsToHMS(secondsOfADay));
+						//System.out.println("Unparking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
 					}
 				}
 				prevState=curState;

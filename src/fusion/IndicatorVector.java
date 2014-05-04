@@ -2,11 +2,11 @@ package fusion;
 import helper.CommonUtils;
 
 
-public class IndicatorVector{
-	int secondOfDay;
-	String timeInHMS; 
-	double[] features;
-	int indicator;
+public class IndicatorVector implements Comparable<IndicatorVector>{
+	public int secondOfDay;
+	public String timeInHMS; 
+	public double[] features;
+	public int indicator;
 	
 	String classifierClass;
 	
@@ -40,4 +40,10 @@ public class IndicatorVector{
 		ret+=","+classifierClass;
 		return ret;
 	}
+
+	@Override
+	public int compareTo(IndicatorVector o) {
+		return secondOfDay-o.secondOfDay;
+	}
+	
 }

@@ -54,14 +54,16 @@ public class AccelerometerSignalProcessing {
 		
 		
 		////2014_05_012
-		String[] dateSeqs=new String[]{"2014_04_200"};//, "2014_04_201"};
+		String[] dateSeqs=new String[]{"2014_04_200", "2014_04_201"};
 		//detectByMST(dateSeqs, MST_SOURCE.GOOGLE_API);
-		//detectByCIV(dateSeqs, new Config(10, 3));
 		
+		detectByCIV(dateSeqs, new Config(10, 3));
+		
+		detectByCIVAndMSTWeka(dateSeqs, new Config(10, 3), new Config(5, 5, true));
 		
 		//MST-Weka
-		generateMotionStatesUsingWekaClassifier(dateSeqs, new Config(5, 5, true));
-		detectByMST(dateSeqs, MST_SOURCE.WEKA_CLASSIFIER);
+		//generateMotionStatesUsingWekaClassifier(dateSeqs, new Config(5, 5, true));
+		//detectByMST(dateSeqs, MST_SOURCE.WEKA_CLASSIFIER);
 		
 		
 		//generateVectorsOfCIVIndicator(Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log", 10, 3);
@@ -99,11 +101,37 @@ public class AccelerometerSignalProcessing {
 			WindowFeatureExtraction wfe=new WindowFeatureExtraction(config, new File(filepath));
 			ArrayList<IndicatorVector> indicatorVectors=wfe.outputCIVVectors(wfe.run(), null, null);
 			//wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
-			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), 0.6));
+			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), 0.6,  SOURCE.CIV));
 		}
 		EventDetection.calculatePerformance( allDetected, allGroundtruth, 30);
 	}
 	
+	
+	public static void detectByCIVAndMSTWeka(String[] dateSeqs, Config civConfig, Config mstConfig){
+		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
+		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
+		
+		UPActivitiesOfSameSource allDetected=new UPActivitiesOfSameSource(SOURCE.CIV_MST_WEKA);
+		for(int i=0;i<dateSeqs.length;i++){
+			String filepath=rawAcclFilepaths[i];
+			String dateSeq=dateSeqs[i];
+			
+			//CIV vectors
+			WindowFeatureExtraction wfe=new WindowFeatureExtraction(civConfig, new File(filepath));
+			ArrayList<IndicatorVector> indicatorVectors=wfe.outputCIVVectors(wfe.run(), null, null);
+			
+			//MST vectors
+			WindowFeatureExtraction fe=new WindowFeatureExtraction(mstConfig, new File(filepath) );
+			indicatorVectors.addAll( EventClassifier.classifyMotionStatesAndReturnMSTVectors(dateSeq, fe.run()) );
+			
+			//sort vectors
+			Collections.sort(indicatorVectors);
+			
+			//wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
+			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), 0.6,  SOURCE.CIV_MST_WEKA));
+		}
+		EventDetection.calculatePerformance( allDetected, allGroundtruth, 30);
+	}
 	
 	
 	/*
@@ -151,8 +179,6 @@ public class AccelerometerSignalProcessing {
 	
 	
 	public static void generateMotionStatesUsingWekaClassifier(String[] dateSeqs, Config config){
-		ArrayList<String> mstVectors=null;
-		
 		//convert dateseq to filepaths
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		
@@ -161,7 +187,7 @@ public class AccelerometerSignalProcessing {
 			String filepath=rawAcclFilepaths[i];
 			System.out.println("********* "+ filepath +" ***************");
 			WindowFeatureExtraction fe=new WindowFeatureExtraction(config, new File(filepath) );
-			mstVectors=EventClassifier.classifyMotionStates(dateSeq, fe.run());
+			ArrayList<IndicatorVector> mstVectors=EventClassifier.classifyMotionStatesAndReturnMSTVectors(dateSeq, fe.run());
 			System.out.println(mstVectors.size()+"  motion states classified");
 		}
 	}	

@@ -626,24 +626,38 @@ public class Fusion {
 		return vectors;
 	}
 	
+	/**
+	 * 
+	 * @param indicatorVectors: sorted based on time
+	 * @param date
+	 * @param detectionThreshold: 
+	 * @param source: SOURCE
+	 * @return
+	 */
 	public static UPActivitiesOfSameSource detectByIndicatorVectors(
 			ArrayList<IndicatorVector> indicatorVectors, String date,
-			double detectionThreshold) {
-		SOURCE source=SOURCE.CIV;
+			double detectionThreshold, SOURCE source) {
 		UPActivitiesOfSameSource detected = new UPActivitiesOfSameSource(source);
 		double curProb;
 		double[] outcomeLikelihood = new double[outcomes.length];
-		for (IndicatorVector iv : indicatorVectors) {
+		
+		IndicatorVectorSet ivs=new IndicatorVectorSet();
+		
+		for (IndicatorVector niv : indicatorVectors) {
 			for (int i = 0; i < outcomes.length; i++) {
 				int outcome = outcomes[i];
 				curProb = PRIOR_PROBABILITY.get(outcome);
-				double condProb=conditionalProbabilityProduct(iv.features, outcome, iv.indicator, HIGH_LEVEL_ACTIVITY_UPARKING);
-				curProb *= condProb;
+				
+				ivs.add(niv);
+				for(Integer indicator: ivs.vectorSet.keySet()){
+					IndicatorVector iv=ivs.vectorSet.get(indicator);
+					double condProb=conditionalProbabilityProduct(iv.features, outcome, iv.indicator, HIGH_LEVEL_ACTIVITY_UPARKING);
+					curProb *= condProb;
+				}
 				
 				/*if(iv.timeInHMS.equals("16:10:30")){
 					System.out.println(outcome+" "+condProb);
-				}*/
-				
+				}*/				
 				outcomeLikelihood[i] = curProb; // precision is 3
 			}
 
@@ -669,14 +683,14 @@ public class Fusion {
 						detected.get(Constants.PARKING_ACTIVITY).add(
 								new UPActivity(source,
 										Constants.PARKING_ACTIVITY, date,
-										iv.timeInHMS, outcomeLikelihood[1]));
+										niv.timeInHMS, outcomeLikelihood[1]));
 					}
 				} else {// unparking
 					if (outcomeLikelihood[2] > detectionThreshold) {
 						detected.get(Constants.UNPARKING_ACTIVITY).add(
 								new UPActivity(source,
 										Constants.UNPARKING_ACTIVITY, date,
-										iv.timeInHMS, outcomeLikelihood[2]));
+										niv.timeInHMS, outcomeLikelihood[2]));
 					}
 				}
 
