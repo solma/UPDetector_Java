@@ -50,6 +50,20 @@ public class AccelerometerFileProcessing {
 				+"ACCELEROMETER_FEATURE_2013_11_011.arff");*/
 	}
 	
+	public static void writeMotionStateArffHeader(FileWriter fw, String headerFilePath){
+		try {
+			Scanner sc=new Scanner(new File(headerFilePath));
+			//write the arff header
+			while(sc.hasNextLine()){
+				String line=sc.nextLine().trim();
+				fw.write(line+"\n");
+			}
+			sc.close();	
+		} catch (Exception e) {
+		}
+	}
+	
+	
 	/************************
 	 * This method reads a minimally (i.e. only at the edge points) activity (i.e. on_foot/in_vehicle) labeled 
 	 * accelerometer data file and automatically add activity labels for unlabeled readings. 
@@ -65,19 +79,11 @@ public class AccelerometerFileProcessing {
 			
 			int FIELD_LENGTH_OF_LABELED_RECORD=7;
 			
-			Scanner sc=new Scanner(new File(Constants.ACCELEROMETER_RAW_DATA_DIR+"arff_header.txt"));
+			Scanner sc; 
 			FileWriter fw=new FileWriter(outputFile);
 			
 			//write the arff header
-			while(sc.hasNextLine()){
-				String line=sc.nextLine().trim();
-				if(removeFilter){
-					if(line.contains("date")||line.contains("time"))
-						continue;
-				}
-				fw.write(line+"\n");
-			}
-			sc.close();		
+			writeMotionStateArffHeader(fw, Constants.ACCELEROMETER_RAW_DATA_DIR+"arff_header.txt");
 			
 			//complete the activity label
 			sc=new Scanner(new File(inputFile));

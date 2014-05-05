@@ -21,7 +21,6 @@ public class Config {
 		//if the # of readings in the window below the threshold, the window is not output for a feature
 		public int minNoOfSamplesInWholeWindow;
 
-		public boolean motionStateFeature; //true if extracting features for motion state classifying 
 		public boolean singleMotionStateOnly; //true if extracting motion state features for driving state only
 		
 		// used which axes, 0:X, 1:Y, 2:Z, 3:Aggregate
@@ -67,6 +66,5 @@ public class Config {
 	
 	public Config(int windowSize, int slidingStep, boolean motionStateFeature){
 		this(windowSize, slidingStep);
-		this.motionStateFeature=motionStateFeature;
 	}
 }

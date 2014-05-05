@@ -54,16 +54,21 @@ public class AccelerometerSignalProcessing {
 		
 		
 		////2014_05_012
-		String[] dateSeqs=new String[]{"2014_04_200", "2014_04_201"};
-		//detectByMST(dateSeqs, MST_SOURCE.GOOGLE_API);
+		String[] dateSeqs=new String[]{
+				//test set
+				//"2013_09_1243","2013_09_1244","2013_08_2689"
+				"2014_04_200", "2014_04_201"
+			};
 		
-		detectByCIV(dateSeqs, new Config(10, 3));
+		//detectByMST(dateSeqs, MST_SOURCE.GOOGLE_API); //MST-GOOGLE
 		
-		detectByCIVAndMSTWeka(dateSeqs, new Config(10, 3), new Config(5, 5, true));
+		//detectByCIV(dateSeqs, new Config(10, 3), 0.9, 30);
+		
+		//detectByCIVAndMSTWeka(dateSeqs, new Config(10, 3), new Config(5, 5, true), 0.9, 30);
 		
 		//MST-Weka
-		//generateMotionStatesUsingWekaClassifier(dateSeqs, new Config(5, 5, true));
-		//detectByMST(dateSeqs, MST_SOURCE.WEKA_CLASSIFIER);
+		generateMotionStatesUsingWekaClassifier(dateSeqs, new Config(5, 5, true));
+		detectByMST(dateSeqs, MST_SOURCE.WEKA_CLASSIFIER);
 		
 		
 		//generateVectorsOfCIVIndicator(Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log", 10, 3);
@@ -89,7 +94,7 @@ public class AccelerometerSignalProcessing {
 	 * @param dateSeqs: raw accelerometer files
 	 * @param config: window feature extraction configuration
 	 */
-	public static void detectByCIV(String[] dateSeqs, Config config){
+	public static void detectByCIV(String[] dateSeqs, Config config, double detectionThreshold, int matchTimeDiffThreshold){
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
 		
@@ -101,13 +106,13 @@ public class AccelerometerSignalProcessing {
 			WindowFeatureExtraction wfe=new WindowFeatureExtraction(config, new File(filepath));
 			ArrayList<IndicatorVector> indicatorVectors=wfe.outputCIVVectors(wfe.run(), null, null);
 			//wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
-			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), 0.6,  SOURCE.CIV));
+			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), detectionThreshold,  SOURCE.CIV));
 		}
-		EventDetection.calculatePerformance( allDetected, allGroundtruth, 30);
+		EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffThreshold);
 	}
 	
 	
-	public static void detectByCIVAndMSTWeka(String[] dateSeqs, Config civConfig, Config mstConfig){
+	public static void detectByCIVAndMSTWeka(String[] dateSeqs, Config civConfig, Config mstConfig, double detectionThreshold, int matchTimeDiffThreshold){
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
 		
@@ -128,9 +133,9 @@ public class AccelerometerSignalProcessing {
 			Collections.sort(indicatorVectors);
 			
 			//wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
-			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), 0.6,  SOURCE.CIV_MST_WEKA));
+			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), detectionThreshold,  SOURCE.CIV_MST_WEKA));
 		}
-		EventDetection.calculatePerformance( allDetected, allGroundtruth, 30);
+		EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffThreshold);
 	}
 	
 	
@@ -152,12 +157,12 @@ public class AccelerometerSignalProcessing {
 		case GOOGLE_API:
 			System.out.println("*********** MST Detection via Google API *****************");
 			EventDetection.setupParametersForMST("google");
-			allDetected=new UPActivitiesOfSameSource(SOURCE.MST_GOOGLE);
+			allDetected=new UPActivitiesOfSameSource(SOURCE.MST_GOOGLE);//MATCH_TIME_DIFF_THRESHOLD=30
 			break;
 		case WEKA_CLASSIFIER:
 			System.out.println("*********** MST Detection via Weka Classifier *****************");
 			EventDetection.setupParametersForMST("weka");
-			allDetected=new UPActivitiesOfSameSource(SOURCE.MST_WEKA);
+			allDetected=new UPActivitiesOfSameSource(SOURCE.MST_WEKA); //MATCH_TIME_DIFF_THRESHOLD=90
 			break;
 		default:
 			System.err.println("Error: Unknown MST source");

@@ -25,7 +25,7 @@ public final class Constants {
 	public static final String ACCELEROMTER_ACTIVITY_GOOGLE_DIR=ACCELEROMETER_BASE_DIR+"activity/GoogleAPI/";
 	public static final String ACCELEROMTER_ACTIVITY_WEKA_DIR=ACCELEROMETER_BASE_DIR+"activity/Weka/";
 	public static final String ACCELEROMETER_CIV_FEATURES_DIR=ACCELEROMETER_BASE_DIR+"change_in_variance/";
-	public static final String ACCELEROMETER_STATE_FEATURES_DIR=ACCELEROMETER_BASE_DIR+"motion_state/";
+	public static final String ACCELEROMETER_MOTION_STATE_DIR=ACCELEROMETER_BASE_DIR+"motion_state/";
 	
 	public static final String ACCELEROMETER_FUSION_DIR=ACCELEROMETER_BASE_DIR+"fusion/";
 	

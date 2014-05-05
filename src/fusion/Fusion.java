@@ -67,7 +67,7 @@ public class Fusion {
 	/**
 	 * folders of vectors for different indicators
 	 */
-	static String MST_FOLDER=Constants.ACCELEROMETER_STATE_FEATURES_DIR+"/ConditionalProbability/";
+	static String MST_FOLDER=Constants.ACCELEROMETER_MOTION_STATE_DIR+"/ConditionalProbability/";
 	static String CIV_FOLDER=Constants.ACCELEROMETER_CIV_FEATURES_DIR+"/"+Constants.PHONE_POSITIONS[Constants.PHONE_POSITION_ALL]+"/";
 	static String IODOOR_FOLDER=Constants.ENVIRONMENT_BASE_DIR;
 	static String ENGINE_START_FOLDER=Constants.AUDIO_BASE_DIR+"conditional_probability/engine_start/";
@@ -341,7 +341,8 @@ public class Fusion {
 				//"2013_08_283","2013_08_295","2013_08_2311","2013_08_2710",
 				//"2013_09_191",
 				"2014_04_200"
-				//"2013_09_211","2013_10_241", "2013_10_251","2013_11_011", "2013_11_012",//test set
+				//"2013_09_211","2013_10_241", "2013_10_251","2013_11_011", "2013_11_012",
+				//test set
 				//"2013_09_1243","2013_09_1244","2013_08_2689"
 		};
 		//dates=new String[]{"2013_11_011", "2013_11_012"};
@@ -627,6 +628,37 @@ public class Fusion {
 	}
 	
 	/**
+	 * normalize the likelihood
+	 */
+	public static double[] normalizeProbabilities(double[] outcomeLikelihood){
+		double sum = 0;
+		double[] normalized=new double[outcomeLikelihood.length];
+		for (int i = 0; i < outcomeLikelihood.length; i++)
+			sum += outcomeLikelihood[i];
+		if (DEBUG_ON){
+			System.out.println(sum + "  "+ Arrays.toString(outcomeLikelihood));
+		}
+		for (int i = 0; i < outcomeLikelihood.length; i++)
+			normalized[i] = (int) ((outcomeLikelihood[i] / sum) * 1000) / 1000.0;
+		if (DEBUG_ON){
+			System.out.println("normalized outcome likelihoods: "+ Arrays.toString(normalized));
+		}
+		return normalized;
+	}
+	
+	public static double[] mostLikelyOutcome(double[] normarlizedOutcomeLikelihood){
+		int mostLikelyOutcome=0;
+		double maxProb=normarlizedOutcomeLikelihood[mostLikelyOutcome];
+		for(int i=1;i<normarlizedOutcomeLikelihood.length;i++){
+			if(normarlizedOutcomeLikelihood[i]>=maxProb){
+				mostLikelyOutcome=i;
+				maxProb=normarlizedOutcomeLikelihood[i];
+			}
+		}
+		return new double[]{mostLikelyOutcome, maxProb};
+	}
+	
+	/**
 	 * 
 	 * @param indicatorVectors: sorted based on time
 	 * @param date
@@ -640,61 +672,67 @@ public class Fusion {
 		UPActivitiesOfSameSource detected = new UPActivitiesOfSameSource(source);
 		double curProb;
 		double[] outcomeLikelihood = new double[outcomes.length];
+		double[] condProbs=new double[outcomeLikelihood.length];
 		
 		IndicatorVectorSet ivs=new IndicatorVectorSet();
 		
+		int[] indicators={INDICATOR_CIV, INDICATOR_MST};
+		
 		for (IndicatorVector niv : indicatorVectors) {
+			ivs.add(niv);
+		
+			if(ivs.vectorSet.size()==2){
+				//System.out.println();
+			}
+			
+			int[] mostLikelyOutcomes=new int[ivs.vectorSet.size()];//most likely outcome for each indicator
+			int indicatorCnt=0;
+			for(int indiDix=0;indiDix<indicators.length;indiDix++){
+				int indicator=indicators[indiDix];
+				
+				if(ivs.vectorSet.containsKey(indicator)){
+					for (int i = 0; i < outcomes.length; i++) {
+						int outcome = outcomes[i];
+						IndicatorVector iv=ivs.vectorSet.get(indicator);
+						condProbs[i]=conditionalProbabilityProduct(iv.features, outcome, iv.indicator, HIGH_LEVEL_ACTIVITY_UPARKING);
+						mostLikelyOutcomes[indicatorCnt]=(int)mostLikelyOutcome(condProbs)[0];
+						
+						if(indicatorCnt==0) outcomeLikelihood[i]=1;//initialize
+						
+						if(//true
+							indicatorCnt==0 || mostLikelyOutcomes[indicatorCnt]==mostLikelyOutcomes[indicatorCnt-1]
+						){
+							outcomeLikelihood[i] *= condProbs[i]; // precision is 3
+						}
+					}
+					indicatorCnt++;
+				}
+			}
+			
+			//multiply prior prob
 			for (int i = 0; i < outcomes.length; i++) {
-				int outcome = outcomes[i];
-				curProb = PRIOR_PROBABILITY.get(outcome);
-				
-				ivs.add(niv);
-				for(Integer indicator: ivs.vectorSet.keySet()){
-					IndicatorVector iv=ivs.vectorSet.get(indicator);
-					double condProb=conditionalProbabilityProduct(iv.features, outcome, iv.indicator, HIGH_LEVEL_ACTIVITY_UPARKING);
-					curProb *= condProb;
+				outcomeLikelihood[i] *= PRIOR_PROBABILITY.get(outcomes[i]);
+			}
+			outcomeLikelihood=normalizeProbabilities(outcomeLikelihood);
+			double[] mostLikelyOutcomeAndProb=mostLikelyOutcome(outcomeLikelihood);
+			int mostLikelyOutcome=(int)mostLikelyOutcomeAndProb[0];
+			double mostLikelyOutcomeProb=mostLikelyOutcomeAndProb[1];
+			switch(mostLikelyOutcome){
+			case 1:
+				if(mostLikelyOutcomeProb>detectionThreshold){
+					detected.get(Constants.PARKING_ACTIVITY).add(
+							new UPActivity(source,	Constants.PARKING_ACTIVITY, date, niv.timeInHMS, mostLikelyOutcomeProb));
 				}
-				
-				/*if(iv.timeInHMS.equals("16:10:30")){
-					System.out.println(outcome+" "+condProb);
-				}*/				
-				outcomeLikelihood[i] = curProb; // precision is 3
-			}
-
-			/**
-			 * normalize the likelihood
-			 */
-			double sum = 0;
-			for (int i = 0; i < outcomeLikelihood.length; i++)
-				sum += outcomeLikelihood[i];
-			if (DEBUG_ON){
-				System.out.println(sum + "  "+ Arrays.toString(outcomeLikelihood));
-			}
-			for (int i = 0; i < outcomeLikelihood.length; i++)
-				outcomeLikelihood[i] = (int) ((outcomeLikelihood[i] / sum) * 1000) / 1000.0;
-			if (DEBUG_ON){
-				System.out.println("normalized outcome likelihoods: "+ Arrays.toString(outcomeLikelihood));
-			}
-			if (outcomeLikelihood[0] > outcomeLikelihood[1]
-					&& outcomeLikelihood[0] > outcomeLikelihood[2]) {
-			} else {
-				if (outcomeLikelihood[1] > outcomeLikelihood[2]) {// parking
-					if (outcomeLikelihood[1] > detectionThreshold) {
-						detected.get(Constants.PARKING_ACTIVITY).add(
-								new UPActivity(source,
-										Constants.PARKING_ACTIVITY, date,
-										niv.timeInHMS, outcomeLikelihood[1]));
-					}
-				} else {// unparking
-					if (outcomeLikelihood[2] > detectionThreshold) {
-						detected.get(Constants.UNPARKING_ACTIVITY).add(
-								new UPActivity(source,
-										Constants.UNPARKING_ACTIVITY, date,
-										niv.timeInHMS, outcomeLikelihood[2]));
-					}
+				break;
+			case 2:
+				if (mostLikelyOutcomeProb > detectionThreshold) {
+					detected.get(Constants.UNPARKING_ACTIVITY).add(
+							new UPActivity(source,Constants.UNPARKING_ACTIVITY, date,niv.timeInHMS, mostLikelyOutcomeProb));
 				}
-
-			}
+				break;
+			default:
+				break;
+			}			
 		}
 		System.out.println(detected);
 		return detected;

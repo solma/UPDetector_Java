@@ -75,7 +75,7 @@ public class UPActivity implements Comparable<UPActivity> {
 		boolean equal=false;
 		switch(o.source){
 		case GROUND_TRUTH:
-			equal=date.equals(o.date)&&timeDiffWithinThreshold(o);
+			equal=date.equals(o.date)&&timeDiffWithinThreshold(o, 5); // within 5 secs considere equal
 			break;
 		default:
 			break;
@@ -84,16 +84,10 @@ public class UPActivity implements Comparable<UPActivity> {
 	}
 	
 	
-	public static int DEFAULT_TIME_DIFF_THRSHOLD=5;//seconds
 	public boolean timeDiffWithinThreshold(UPActivity o, int diffThreshold){
 		if(Math.abs(timeInSecOfDay-o.timeInSecOfDay)<diffThreshold) return true;
 		else return false;
 	}
-	
-	public boolean timeDiffWithinThreshold(UPActivity o){
-		return timeDiffWithinThreshold(o, DEFAULT_TIME_DIFF_THRSHOLD);
-	}
-	
 	
 	
 	/**
@@ -106,15 +100,11 @@ public class UPActivity implements Comparable<UPActivity> {
 			System.err.println("Error: source cannot be groundtruth");
 			return null;
 		}
-		int l=-1, r=groudtruth.size();
-		while(l+1!=r){
-			int m=l+(r-l)/2;
-			if(compareTo(groudtruth.get(m))<0) r=m;
-			else l=m;
-		}
-		if(l>=0&&timeDiffWithinThreshold(groudtruth.get(l), matchTimeDiffThreshold)){
-			System.out.println(this+" matched to groundtruth event: "+groudtruth.get(l));
-			return groudtruth.get(l);
+		UPActivity matchedGTEvent=binarySearchLastSmaller(groudtruth, this.timeInSecOfDay);
+		
+		if(matchedGTEvent!=null && this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay<=matchTimeDiffThreshold){
+			System.out.println(this+" matched to groundtruth event: "+matchedGTEvent);
+			return matchedGTEvent;
 		}
 		return null;
 		
@@ -141,6 +131,23 @@ public class UPActivity implements Comparable<UPActivity> {
 			return detectedEvents.get(l);
 		}
 		return null;
+	}
+	
+	/**
+	 * 
+	 * @param activities: a list of activities
+	 * @param timeOfSec: to be searched
+	 * @return: the last activity whose timestamp is smaller or equal than timeOfSec
+	 */
+	public static UPActivity binarySearchLastSmaller(ArrayList<UPActivity> activities, int timeInSec){
+		int l=-1, r=activities.size();
+		while(l+1!=r){
+			int m=l+(r-l)/2;
+			if(activities.get(m).timeInSecOfDay-timeInSec>0) r=m;
+			else l=m;
+		}
+		if(l>=0&&activities.get(l).timeInSecOfDay<=timeInSec) return activities.get(l);
+		else return null;
 	}
 
 

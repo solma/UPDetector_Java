@@ -62,6 +62,15 @@ public class UPActivitiesOfSameSource {
 		return events.get(0).size();
 	}
 	
+	public ArrayList<UPActivity> toOneSingleSortedList(){
+		ArrayList<UPActivity> oneSingleSortedList=new ArrayList<UPActivity>();
+		for(ArrayList<UPActivity> acts: events.values()){
+			oneSingleSortedList.addAll(acts);
+		}
+		Collections.sort(oneSingleSortedList);
+		return oneSingleSortedList;
+	}
+	
 	public String toString(){
 		StringBuilder sb=new StringBuilder();
 		sb.append("********* "+source+" ***********\n");

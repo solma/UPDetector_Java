@@ -58,7 +58,7 @@ public class EventDetection {
 		ArrayList<UPActivity> clusteredEvents=new ArrayList<UPActivity>();
 		UPActivity prev=null;
 		for(UPActivity event: detectedEvents){
-			if(prev==null||!event.timeDiffWithinThreshold(prev)){//if move out the neighboring area, then count as a new event
+			if(prev==null||!event.timeDiffWithinThreshold(prev, 5)){//if move out the neighboring area, then count as a new event
 				clusteredEvents.add(event);
 			}
 			prev=event;

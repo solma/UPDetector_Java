@@ -472,7 +472,7 @@ public class EventClassifier {
 			filterOption="-R 1,4,5,9,10";
 			break;
 		case Constants.CLASSIFIER_ACCEL_STATE:
-			fileDirectory=Constants.ACCELEROMETER_STATE_FEATURES_DIR;
+			fileDirectory=Constants.ACCELEROMETER_MOTION_STATE_DIR;
 			filter = "weka.filters.unsupervised.attribute.Remove";
 			filterOption="-R 1";
 			break;
@@ -597,12 +597,12 @@ public class EventClassifier {
 			FileWriter fw=new FileWriter(ouputfilePath);
 			//build an instance and classify
 			Classifier mClassifier = (Classifier)SerializationHelper.read(
-					Constants.ACCELEROMETER_STATE_FEATURES_DIR+"model/RandomForest.model");
+					Constants.ACCELEROMETER_MOTION_STATE_DIR+"model/RandomForest.model");
 			System.out.println("Loaded Classifier:");
 			System.out.println(mClassifier.toString());
 			
 			Instances template=new Instances(new BufferedReader(
-					new FileReader(Constants.ACCELEROMETER_STATE_FEATURES_DIR+"state_arff_header.txt")));
+					new FileReader(Constants.ACCELEROMETER_MOTION_STATE_DIR+"state_arff_header.txt")));
 			template.setClassIndex(template.numAttributes()-1);
 			Attribute classAttr=template.classAttribute();
 			System.out.println("class attribute:"+classAttr.toString());
@@ -611,6 +611,17 @@ public class EventClassifier {
 			String prevState="";
 			double[] probDistri=null, prevProbDistri=null;
 			
+			
+			//System.out.println(secondsOfADay+"  "+pred);
+			HashSet<String> drivingStateEquivalentClass=new HashSet<String>();
+			drivingStateEquivalentClass.add("Driving");
+			//drivingStateClass.add("Still");
+			
+			HashSet<String> walkingStateEquivalentClass=new HashSet<String>();
+			walkingStateEquivalentClass.add("Jogging");
+			walkingStateEquivalentClass.add("Walking");
+			walkingStateEquivalentClass.add("Upstairs");
+			walkingStateEquivalentClass.add("Downstairs");
 			
 			for(WindowFeature feature: features){
 				String[] fields=feature.asMotionStateFeatures().split(",");
@@ -644,29 +655,20 @@ public class EventClassifier {
 				}
 				prevProbDistri=Arrays.copyOf(probDistri, probDistri.length);
 				
-				fw.write(date+" " + CommonUtils.secondsToHMS(secondsOfADay)+" "+curState
-				//+feature.asMotionStateFeatures()
-				+"\n");
-				
-				//System.out.println(secondsOfADay+"  "+pred);
-				HashSet<String> drivingStateEquivalentClass=new HashSet<String>();
-				drivingStateEquivalentClass.add("Driving");
-				//drivingStateClass.add("Still");
-				
-				HashSet<String> walkingStateEquivalentClass=new HashSet<String>();
-				//walkingStateClass.add("Jogging");
-				walkingStateEquivalentClass.add("Walking");
-				//walkingStateClass.add("Upstairs");
-				//walkingStateClass.add("Downstairs");
-				
 				//add detected events
-				if(walkingStateEquivalentClass.contains(curState)&&drivingStateEquivalentClass.contains(prevState)){
-						//System.out.println("Parking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
+				if(walkingStateEquivalentClass.contains(curState)){
+					curState="Walking";	
+					//System.out.println("Parking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
 				}else{
 					if(drivingStateEquivalentClass.contains(curState)&&walkingStateEquivalentClass.contains(prevState)){
 						//System.out.println("Unparking 	time:"+CommonUtils.secondsToHMS(secondsOfADay)+"	"+prevState+"--->"+curState);
 					}
 				}
+				
+				fw.write(date+" " + CommonUtils.secondsToHMS(secondsOfADay)+" "+curState
+						//+feature.asMotionStateFeatures()
+						+"\n");
+				
 				prevState=curState;
 			}
 			System.out.println("weka classified motion states ouputs to "+ouputfilePath);
