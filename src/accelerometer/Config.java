@@ -63,8 +63,5 @@ public class Config {
 		this.windowSize=windowSize;
 		this.slidingStep=slidingStep;
 	}
-	
-	public Config(int windowSize, int slidingStep, boolean motionStateFeature){
-		this(windowSize, slidingStep);
-	}
+
 }

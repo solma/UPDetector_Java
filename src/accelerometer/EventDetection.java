@@ -66,15 +66,19 @@ public class EventDetection {
 		return clusteredEvents;
 	}
 	
-	public static double[][] calculatePerformance(UPActivitiesOfSameSource detectionResults, UPActivitiesOfSameSource groudtruth, int matchTimeDiffThreshold){
+	public static EventDetectionResult calculatePerformance(UPActivitiesOfSameSource detectionResults, UPActivitiesOfSameSource groudtruth, int matchTimeDiffThreshold){
 		MATCH_TIME_DIFF_THRESHOLD=matchTimeDiffThreshold;
 		return calculatePerformance(detectionResults, groudtruth);
 	}
 	
-	//detection results:  one parking list: one unparking list
-	// each timestamp format: date-hms
-	public static double[][] calculatePerformance(UPActivitiesOfSameSource detectionResults, UPActivitiesOfSameSource groudtruth){
-		
+	/**
+	 * 
+	 * @param detectionResults
+	 * @param groudtruth
+	 * @return pre, recal, delay 
+	 */
+	public static EventDetectionResult calculatePerformance(UPActivitiesOfSameSource detectionResults, UPActivitiesOfSameSource groudtruth){
+		EventDetectionResult edr=new EventDetectionResult();
 		System.out.println("************************   Detection Precision and Recall:  ***************************");
 		int tp,fp, fn;
 		
@@ -83,7 +87,6 @@ public class EventDetection {
 		groudtruth.sort();
 		detectionResults.sort();
 		
-		double[][] preAndRecall=new double[2][2];
 		ArrayList<UPActivity> truth, detected;
 		for(int i=0;i<2;i++){
 			if(i==Constants.PARKING_ACTIVITY){
@@ -151,19 +154,14 @@ public class EventDetection {
 			//System.out.println(" False Negatives are:     "+ falseNegative);
 			System.out.println("TP="+tp+"  FP="+fp+"  FN="+fn);
 			
-			
-			AccelerometerSignalProcessing.tps[i*2]=Math.round(tp/(tp+fp+0.0)*1000.0)/1000.0;
-			AccelerometerSignalProcessing.tps[i*2+1]=Math.round(tp/(tp+fn+0.0)*1000.0)/1000.0;
-			
-			
 			double precision=((int)(tp/(tp+fp+0.0)*1000))/1000.0;
 			double recall=((int)(tp/(tp+fn+0.0)*1000))/1000.0;
 			System.out.println("Precision="+precision+"		Recall="+recall+"		avgDelay="+String.format("%.2f secs", avgDelay));
 			System.out.println();
 		
-			preAndRecall[i][0]=precision;preAndRecall[i][1]=recall;
+			edr.add(i, precision, recall, avgDelay);
 		}
-		return preAndRecall;
+		return edr;
 	}
 	
 	//@fn date

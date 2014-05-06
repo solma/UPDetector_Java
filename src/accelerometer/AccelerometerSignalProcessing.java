@@ -31,6 +31,7 @@ import fusion.Fusion;
 import fusion.IndicatorVector;
 
 import accelerometer.learning.EventClassifier;
+import accelerometer.learning.MotionStateClassifierTraining;
 import accelerometer.windowfeature.WindowFeature;
 import accelerometer.windowfeature.WindowFeatureExtraction;
 
@@ -44,31 +45,32 @@ public class AccelerometerSignalProcessing {
 	
 	public static void main(String[] args) {
 		
-		//extractMotionStateFeaturesForDrivingState();
-				
-		
-		String folderOfAllRawFiles=Constants.ACCELEROMETER_RAW_DATA_DIR
-				+Constants.PHONE_POSITIONS[Constants.PHONE_POSITION_ALL]+"/test/";
-		String[] allRawFiles=getPathForAllFiles(new File(folderOfAllRawFiles));		
-		
-		
-		
 		////2014_05_012
 		String[] dateSeqs=new String[]{
 				//test set
 				//"2013_09_1243","2013_09_1244","2013_08_2689"
 				"2014_04_200", "2014_04_201"
 			};
+		Config civConf=new Config(10, 3);
+		
+		Config mstConf=new Config(10, 3); //5, 5
+				
+		ArrayList<EventDetectionResult> performanceResults=new ArrayList<EventDetectionResult>();
 		
 		//detectByMST(dateSeqs, MST_SOURCE.GOOGLE_API); //MST-GOOGLE
 		
-		//detectByCIV(dateSeqs, new Config(10, 3), 0.9, 30);
-		
-		//detectByCIVAndMSTWeka(dateSeqs, new Config(10, 3), new Config(5, 5, true), 0.9, 30);
+		performanceResults.add( detectByCIV(dateSeqs, civConf, 0.9, 30) );
 		
 		//MST-Weka
-		generateMotionStatesUsingWekaClassifier(dateSeqs, new Config(5, 5, true));
-		detectByMST(dateSeqs, MST_SOURCE.WEKA_CLASSIFIER);
+		generateMotionStatesUsingWekaClassifier(dateSeqs, mstConf); 
+		performanceResults.add( detectByMST(dateSeqs, MST_SOURCE.WEKA_CLASSIFIER) );
+	
+		performanceResults.add( detectByCIVAndMSTWeka(dateSeqs, civConf, mstConf, 0.9, 30) );
+		
+		for(EventDetectionResult edr: performanceResults){
+			System.out.println(edr);
+			System.out.println();
+		}
 		
 		
 		//generateVectorsOfCIVIndicator(Constants.ACCELEROMETER_BASE_DIR+"04202014/ACCELEROMETER_RAW_2014_04_200.log", 10, 3);
@@ -94,7 +96,7 @@ public class AccelerometerSignalProcessing {
 	 * @param dateSeqs: raw accelerometer files
 	 * @param config: window feature extraction configuration
 	 */
-	public static void detectByCIV(String[] dateSeqs, Config config, double detectionThreshold, int matchTimeDiffThreshold){
+	public static EventDetectionResult detectByCIV(String[] dateSeqs, Config config, double detectionThreshold, int matchTimeDiffThreshold){
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
 		
@@ -108,11 +110,11 @@ public class AccelerometerSignalProcessing {
 			//wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
 			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), detectionThreshold,  SOURCE.CIV));
 		}
-		EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffThreshold);
+		return EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffThreshold);
 	}
 	
 	
-	public static void detectByCIVAndMSTWeka(String[] dateSeqs, Config civConfig, Config mstConfig, double detectionThreshold, int matchTimeDiffThreshold){
+	public static EventDetectionResult detectByCIVAndMSTWeka(String[] dateSeqs, Config civConfig, Config mstConfig, double detectionThreshold, int matchTimeDiffThreshold){
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
 		
@@ -135,7 +137,7 @@ public class AccelerometerSignalProcessing {
 			//wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
 			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), detectionThreshold,  SOURCE.CIV_MST_WEKA));
 		}
-		EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffThreshold);
+		return EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffThreshold);
 	}
 	
 	
@@ -151,7 +153,7 @@ public class AccelerometerSignalProcessing {
 	 * @param dateSeqs:  raw accelerometer files
 	 * @param mstSource: google or weka (weka needs preprocessing of raw accelerometer files)
 	 */
-	public static void detectByMST(String[] dateSeqs, MST_SOURCE mstSource){
+	public static EventDetectionResult detectByMST(String[] dateSeqs, MST_SOURCE mstSource){
 		UPActivitiesOfSameSource allDetected;
 		switch(mstSource){
 		case GOOGLE_API:
@@ -166,7 +168,7 @@ public class AccelerometerSignalProcessing {
 			break;
 		default:
 			System.err.println("Error: Unknown MST source");
-			if(true) return;
+			if(true) return null;
 			break;
 		}
 		
@@ -177,9 +179,9 @@ public class AccelerometerSignalProcessing {
 		for(String dateSeq: dateSeqs){
 			allDetected.addAll(EventDetection.findMotionStateTransition(dateSeq));			
 		}
-		EventDetection.calculatePerformance( allDetected, allGroundtruth);
-		
 		System.out.println();
+		
+		return EventDetection.calculatePerformance( allDetected, allGroundtruth);
 	}
 	
 	
