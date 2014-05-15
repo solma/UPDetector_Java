@@ -624,7 +624,8 @@ public class EventClassifier {
 			walkingStateEquivalentClass.add("Downstairs");
 			
 			for(WindowFeature feature: features){
-				String[] fields=feature.asMotionStateFeatures().split(",");
+				String motionStateFeaturesString=feature.asMotionStateFeatures();
+				String[] fields=motionStateFeaturesString.split(",");
 				int n=fields.length;
 				
 				Instance in = new Instance(n+1);//class
@@ -649,6 +650,7 @@ public class EventClassifier {
 				
 				if(prevProbDistri!=null){
 					double[] values={prevProbDistri[0],prevProbDistri[1],probDistri[0],probDistri[1]};
+					//secondsOfADay is the middle time of the later window
 					IndicatorVector vectorOfIndicator=new IndicatorVector(secondsOfADay, values, Fusion.INDICATOR_MST);				
 					//System.out.println(vectorOfIndicator);
 					vectorsOfMSTIndicator.add(vectorOfIndicator);
@@ -665,8 +667,9 @@ public class EventClassifier {
 					}
 				}
 				
-				fw.write(date+" " + CommonUtils.secondsToHMS(secondsOfADay)+" "+curState
-						//+feature.asMotionStateFeatures()
+				fw.write(date+" " + CommonUtils.secondsToHMS(secondsOfADay)+" "
+				+motionStateFeaturesString.replaceAll(",", " ")+" "
+						+curState
 						+"\n");
 				
 				prevState=curState;

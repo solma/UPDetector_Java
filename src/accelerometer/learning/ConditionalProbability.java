@@ -1,6 +1,7 @@
-package fusion;
+package accelerometer.learning;
 
 
+import fusion.Fusion;
 import helper.Constants;
 
 import org.apache.commons.math3.distribution.NormalDistribution;

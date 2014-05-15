@@ -25,6 +25,7 @@ public class WindowFeature {
 	 * */
 	// For X, Y, Z and aggregate axis
 	public ArrayList<ArrayList<Double>> timeIntervalBtwPeaks;
+	public ArrayList<ArrayList<Double>> avgAbsoluteDiff;
 	public ArrayList<ArrayList<Double>> binPercents;
 	
 	
@@ -76,6 +77,8 @@ public class WindowFeature {
 			sb.append(String.format(dFormat, Math.sqrt(varianceSeries.get(axisIdx).get(2)) )+",");
 		}
 		sb.append(String.format(dFormat,averageSeries.get(3).get(2))) ;//append the resultant
+		
+		//TODO add new features
 		
 		return sb.toString();
 	}

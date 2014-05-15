@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
 
+import java_cup.runtime.lr_parser;
+
 
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
@@ -21,6 +23,8 @@ import upactivity.UPActivity.SOURCE;
 
 import accelerometer.AccelerometerSignalProcessing;
 import accelerometer.EventDetection;
+import accelerometer.learning.ConditionalProbability;
+import accelerometer.learning.FeatureGroup;
 
 
 public class Fusion {
@@ -55,33 +59,25 @@ public class Fusion {
 	public static final int OUTCOME_PARKING=101;
 	public static final int OUTCOME_UNPARKING=102;
 	static int[] outcomes={OUTCOME_NONE, OUTCOME_PARKING, OUTCOME_UNPARKING};
-	static String[] filenames={
-			"none.txt",
-			"parking.txt",
-			"unparking.txt"
-	};
 	
-	static HashMap<Integer, Double> PRIOR_PROBABILITY=new HashMap<Integer, Double>();
-	static HashMap<String, ConditionalProbability> CONDITIONAL_PROBABILITY=new HashMap<String, ConditionalProbability>();
 	
-	/**
-	 * folders of vectors for different indicators
-	 */
-	static String MST_FOLDER=Constants.ACCELEROMETER_MOTION_STATE_DIR+"/ConditionalProbability/";
-	static String CIV_FOLDER=Constants.ACCELEROMETER_CIV_FEATURES_DIR+"/"+Constants.PHONE_POSITIONS[Constants.PHONE_POSITION_ALL]+"/";
-	static String IODOOR_FOLDER=Constants.ENVIRONMENT_BASE_DIR;
-	static String ENGINE_START_FOLDER=Constants.AUDIO_BASE_DIR+"conditional_probability/engine_start/";
+	public static HashMap<Integer, Double> PRIOR_PROBABILITY=new HashMap<Integer, Double>();
+	public static HashMap<String, ConditionalProbability> CONDITIONAL_PROBABILITY=new HashMap<String, ConditionalProbability>();
+	
 
-	static boolean DEBUG_ON=false;
-	
-	
+
+	public static boolean DEBUG_ON=false;
 	public static ArrayList<ArrayList<String>> detectedEvents=new ArrayList<ArrayList<String>>();
 	
 	
+	/**
+	 * Initialize conditional probabilities
+	 */
 	static{
-		PRIOR_PROBABILITY.put(OUTCOME_PARKING, 0.1);
-		PRIOR_PROBABILITY.put(OUTCOME_UNPARKING, 0.1);
-		PRIOR_PROBABILITY.put(OUTCOME_NONE, 0.8);
+		//equal prob makes CIV have higher recall lower prec, and vice versa
+		PRIOR_PROBABILITY.put(OUTCOME_PARKING, .1); //
+		PRIOR_PROBABILITY.put(OUTCOME_UNPARKING, .1); //
+		PRIOR_PROBABILITY.put(OUTCOME_NONE, .3); //
 	
 		/*double[][][][] histograms={
   				//none
@@ -315,15 +311,47 @@ public class Fusion {
 	}
 	
 	
+	double[][] featureVectors={
+			/*
+			//CIV
+			 { 0.010,  0.005,  1.082,  1.294,  0.514}//parking
+			,{-0.620,  3.746, -1.086, -0.029,  0.021}	//unparking
+			,{ -0.001,  0.000,  0.983,  0.022, 17.238}//none
+			*/
+				
+			//engine_start
+				/*{3.207E1,1.922E-1,1.006E-3,3.122E2,5.74E-4,3.075E-2,0E0,5.593E1,0E0,0E0,0E0,1.146E2,5.468E0,2.757E0,1.839E0,1.874E0,1.777E0,1.875E0,1.635E0,1.674E0,1.49E0,1.513E0,1.609E0,1.081E0,2.82E-1,1.852E-1,2.11E-1,1.697E-1,1.185E-1,1.265E-1,9.124E-2,1.347E-1,1.209E-1,0E0,1.537E-1,2.108E1,8.358E2,1.31E5,1.681E7,5.395E1,3.776E-1,2.598E-4,1.455E3,4.12E-4,2.251E-2,0E0,1.264E2,0E0,0E0,0E0,-1.621E2,-1.425E0,2.298E0,-3.339E-1,-5.606E-1,-7.03E-1,-3.865E-1,-4.94E-1,-1.048E0,-5.441E-1,-3.183E-1,1.342E-1,-9.061E-1,-6.235E-1,2.158E-1,-2.274E-1,7.22E-2,-7.982E-2,5.538E-2,-1.815E-2,4.018E-2,-9.941E-2,0E0,1.016E-1,8.244E1,4.243E3,1.971E5,4.863E7}//parking
+				,{7.346E0,4.662E-2,1.867E-3,2.885E2,1.103E-3,5.408E-2,0E0,1.93E1,0E0,0E0,0E0,1.224E2,3.122E0,1.865E0,1.657E0,1.676E0,1.687E0,1.487E0,1.371E0,1.254E0,1.082E0,1.112E0,1.051E0,1.145E0,1.149E-1,1.741E-1,1.315E-1,1.028E-1,7.43E-2,5.369E-2,6.249E-2,6.009E-2,5.402E-2,0E0,1.051E-1,1.343E1,9.853E2,7.853E4,1.479E7,2.381E1,1.478E-1,3.928E-4,1.456E3,3.315E-4,1.608E-2,0E0,6.319E1,0E0,0E0,0E0,-1.832E2,5.093E0,-2.289E0,1.263E0,4.524E-1,4.785E-2,-6.677E-1,-1.078E0,-7.26E-1,-9.864E-1,-7.362E-1,-9.606E-1,-6.277E-1,-8.95E-1,2.608E-1,1.832E-1,5.362E-2,-9.407E-2,1.087E-2,-3.491E-2,2.184E-2,2.699E-3,0E0,3.761E-2,5.807E1,4E3,3.666E5,6.648E7}//none
+				,{9.594E0,6.867E-2,2.312E-3,3.23E2,1.477E-3,8.302E-2,0E0,2.144E1,0E0,0E0,0E0,1.379E2,3.717E0,1.936E0,2.102E0,1.766E0,1.235E0,1.48E0,1.355E0,1.11E0,1.207E0,1.122E0,1.184E0,1.06E0,1.316E-1,1.747E-1,1.177E-1,8.829E-2,8.139E-2,6.096E-2,6.767E-2,8.422E-2,6.593E-2,0E0,1.483E-1,1.465E1,9.542E2,7.327E4,1.342E7,2.281E1,1.461E-1,6.114E-4,1.454E3,5.436E-4,2.795E-2,0E0,6.247E1,0E0,0E0,0E0,-1.753E2,4.755E0,1.765E-1,-3.445E-1,-4.646E-1,3.879E-2,5.626E-2,-1.109E0,1.361E-1,-3.071E-1,-8.847E-1,-3.441E-1,-5.553E-1,-8.966E-1,3.06E-1,-8.4E-2,5.157E-2,4.698E-2,4.622E-2,-6.962E-2,5.517E-2,2.113E-2,0E0,6.326E-2,5.593E1,3.581E3,3.009E5,5.465E7}//none
+*/	
+		//bluetooth
+				{-1} //parking, disconnection
+				,{0} //none
+				,{1} //unparking, connection
+	};
+	
+	public static void validateExistingPriorProbUsingSpecificVector(){
+		
+		double[] features=new double[]{0.020,  1.621,  0.980,  0.013, -1.158, -0.022,  0.000,  0.023,  0.000};
+		double[] outcomeProbs=new double[outcomes.length];
+		
+		for(int i=0;i<outcomes.length;i++){
+			outcomeProbs[i]=conditionalProbabilityProduct(features, outcomes[i], INDICATOR_CIV, HIGH_LEVEL_ACTIVITY_UPARKING);
+			//outcomeProbs[i]*=PRIOR_PROBABILITY.get(outcomes[i]);
+		}
+
+		double[] res=getMostLikelyOutcomeAndItsProb(normalizeProbabilities(outcomeProbs));
+		System.out.println("Most Likely outcome is "+outcomes[(int)res[0]]+" prob="+res[1]);
+	}
+	
 	
 	
 	//TODO main method
 	public static void main(String[] args){
-		
-		//calculateAVGVector(MST_FOLDER);
+		validateExistingPriorProbUsingSpecificVector();
 		//if(true) return;
 
-		fusion();
+		//fusion();
 		
 		//testNotificationThreshold();
 	
@@ -443,150 +471,9 @@ public class Fusion {
 		return null;
 	}
 	
-	public static double[][] staticFeatures(){
-		double[][] featureVectors={
-			/*
-			//CIV
-			 { 0.010,  0.005,  1.082,  1.294,  0.514}//parking
-			,{-0.620,  3.746, -1.086, -0.029,  0.021}	//unparking
-			,{ -0.001,  0.000,  0.983,  0.022, 17.238}//none
-			*/
-				
-			//engine_start
-				/*{3.207E1,1.922E-1,1.006E-3,3.122E2,5.74E-4,3.075E-2,0E0,5.593E1,0E0,0E0,0E0,1.146E2,5.468E0,2.757E0,1.839E0,1.874E0,1.777E0,1.875E0,1.635E0,1.674E0,1.49E0,1.513E0,1.609E0,1.081E0,2.82E-1,1.852E-1,2.11E-1,1.697E-1,1.185E-1,1.265E-1,9.124E-2,1.347E-1,1.209E-1,0E0,1.537E-1,2.108E1,8.358E2,1.31E5,1.681E7,5.395E1,3.776E-1,2.598E-4,1.455E3,4.12E-4,2.251E-2,0E0,1.264E2,0E0,0E0,0E0,-1.621E2,-1.425E0,2.298E0,-3.339E-1,-5.606E-1,-7.03E-1,-3.865E-1,-4.94E-1,-1.048E0,-5.441E-1,-3.183E-1,1.342E-1,-9.061E-1,-6.235E-1,2.158E-1,-2.274E-1,7.22E-2,-7.982E-2,5.538E-2,-1.815E-2,4.018E-2,-9.941E-2,0E0,1.016E-1,8.244E1,4.243E3,1.971E5,4.863E7}//parking
-				,{7.346E0,4.662E-2,1.867E-3,2.885E2,1.103E-3,5.408E-2,0E0,1.93E1,0E0,0E0,0E0,1.224E2,3.122E0,1.865E0,1.657E0,1.676E0,1.687E0,1.487E0,1.371E0,1.254E0,1.082E0,1.112E0,1.051E0,1.145E0,1.149E-1,1.741E-1,1.315E-1,1.028E-1,7.43E-2,5.369E-2,6.249E-2,6.009E-2,5.402E-2,0E0,1.051E-1,1.343E1,9.853E2,7.853E4,1.479E7,2.381E1,1.478E-1,3.928E-4,1.456E3,3.315E-4,1.608E-2,0E0,6.319E1,0E0,0E0,0E0,-1.832E2,5.093E0,-2.289E0,1.263E0,4.524E-1,4.785E-2,-6.677E-1,-1.078E0,-7.26E-1,-9.864E-1,-7.362E-1,-9.606E-1,-6.277E-1,-8.95E-1,2.608E-1,1.832E-1,5.362E-2,-9.407E-2,1.087E-2,-3.491E-2,2.184E-2,2.699E-3,0E0,3.761E-2,5.807E1,4E3,3.666E5,6.648E7}//none
-				,{9.594E0,6.867E-2,2.312E-3,3.23E2,1.477E-3,8.302E-2,0E0,2.144E1,0E0,0E0,0E0,1.379E2,3.717E0,1.936E0,2.102E0,1.766E0,1.235E0,1.48E0,1.355E0,1.11E0,1.207E0,1.122E0,1.184E0,1.06E0,1.316E-1,1.747E-1,1.177E-1,8.829E-2,8.139E-2,6.096E-2,6.767E-2,8.422E-2,6.593E-2,0E0,1.483E-1,1.465E1,9.542E2,7.327E4,1.342E7,2.281E1,1.461E-1,6.114E-4,1.454E3,5.436E-4,2.795E-2,0E0,6.247E1,0E0,0E0,0E0,-1.753E2,4.755E0,1.765E-1,-3.445E-1,-4.646E-1,3.879E-2,5.626E-2,-1.109E0,1.361E-1,-3.071E-1,-8.847E-1,-3.441E-1,-5.553E-1,-8.966E-1,3.06E-1,-8.4E-2,5.157E-2,4.698E-2,4.622E-2,-6.962E-2,5.517E-2,2.113E-2,0E0,6.326E-2,5.593E1,3.581E3,3.009E5,5.465E7}//none
-*/	
-		//bluetooth
-				{-1} //parking, disconnection
-				,{0} //none
-				,{1} //unparking, connection
-		};
-		return featureVectors;
-	}
 	
-	/**
-	 * read from files and compute the histogram distribution
-	 */
-	public static void calculateAVGVector(String folder){
-		Scanner sc;
-		
-		for(int i=0;i<filenames.length;i++){
-			filenames[i]=folder+filenames[i];
-		}
-		HashMap<Integer, FeatureGroup> featureGroups=new HashMap<Integer, FeatureGroup>();
-		
-		try{			
-			for(String filepath: filenames){
-				sc=new Scanner(new File(filepath));
-				ArrayList<ArrayList<Double>> features=new ArrayList<ArrayList<Double>>();
-				String line;
-				String[] lineFields;
-				while(sc.hasNextLine()){
-					line=sc.nextLine();
-					lineFields=line.split(",");
-					if(features.size()==0){//read the first line to determine the # of features
-						for(int i=0;i<lineFields.length;i++){
-							features.add(new ArrayList<Double>());
-							if(!featureGroups.containsKey(i)){
-								featureGroups.put(i, new FeatureGroup(i));
-							}
-						}
-					}
-					for(int i=0;i<lineFields.length;i++){
-						double value=Double.parseDouble(lineFields[i].trim());
-						features.get(i).add(value);
-					}
-				}
-				sc.close();
-				
-				String fileNameWithExt=CommonUtils.getFileName(filepath);
-				String fileNameWOExt=fileNameWithExt.substring(0, fileNameWithExt.indexOf('.'));
-				System.out.print(String.format("%13s",fileNameWOExt+":  "));
-				
-				for(int i=0;i<features.size();i++){
-					ArrayList<Double> values=features.get(i);
-					//System.out.println(fileNameWOExt+" "+scalarGroups.get(i).values.size());
-					featureGroups.get(i).values.add(values);
-					
-					/**
-					 * Histogram approach
-					 */
-					/*double[] normalizedInterval=CommonUtils.maxAndMin(CommonUtils.doubleListToDoubleArray(values));
-					normalizedInterval[1]+=0.0001;					
-					double[] distr=CommonUtils.calculateHistogram(values,normalizedInterval, 5);
-					if(i>0) System.out.print(",");
-					System.out.print("	{");
-						*//**
-						 * Print out bin probabilities
-						 *//*
-						for(int j=0;j<distr.length;j++){
-							if(j>0) System.out.print(",");
-							System.out.print(String.format("%.2f", distr[j]));
-						}					
-						*//**
-						 * print out the observed max and min
-						 *//*
-						for(int j=0;j<normalizedInterval.length;j++){
-							if(j>0) System.out.print(",");
-							System.out.print(String.format("%.3f ",normalizedInterval[j]));
-						}
-					System.out.print("}");*/
-					
-					/**
-					 * Normal Distribution approach
-					 */
-					double mean=CommonUtils.calculateMean(values);		
-					double std=Math.sqrt(CommonUtils.calculateVariance(values, mean));
-					System.out.print("{"+String.format("%.3f", mean)+", "+String.format("%.3f},\t", std ));
-				
-				}
-				System.out.println();
-				
-				/**
-				 * Correlation between features
-				 */
-				PearsonsCorrelation pc=new PearsonsCorrelation();
-				for(int i=0;i<features.size();i++){
-					for(int j=i+1;j<features.size();j++){
-						double cor=pc.correlation(CommonUtils.doubleListToDoubleArray(features.get(i)),
-								CommonUtils.doubleListToDoubleArray(features.get(j)) );
-						System.out.println(i+","+j+" : "+cor);
-					}
-				}
-			}
-
-			
-			/*for(int idx:scalarGroups.keySet()){
-				ArrayList<ArrayList<Double>> allValues=scalarGroups.get(idx).values;
-
-				
-				//get the max and min of the current scalar
-				ArrayList<Double> groupedValues=new ArrayList<Double>();
-				for(ArrayList<Double> values: allValues){
-					groupedValues.addAll(values);
-				}				
-				double[] normalizedInterval=CommonUtils.maxAndMin(CommonUtils.fromDoubleArrayListToArray(groupedValues));
-				normalizedInterval[1]+=0.0001;
-				
-				for(int i=0;i<allValues.size();i++){
-					ArrayList<Double> values=allValues.get(i);
-					
-					double[] distr=CommonUtils.calculateHistogram(values,normalizedInterval, 5);
-					if(i>0) System.out.print(",");
-					System.out.print("	{");
-					for(int j=0;j<distr.length;j++){
-						if(j>0) System.out.print(",");
-						System.out.print(String.format("%.2f", distr[j]));
-					}
-					System.out.print("}");
-				}
-				System.out.println();
-			}*/
-		}catch (Exception ex) {
-				ex.printStackTrace();
-		}
-	}
+	
+	
 	
 	//read all feature vectors in 
 	public static double[][] readVectors(String filePath, int indicator){
@@ -646,13 +533,13 @@ public class Fusion {
 		return normalized;
 	}
 	
-	public static double[] mostLikelyOutcome(double[] normarlizedOutcomeLikelihood){
+	public static double[] getMostLikelyOutcomeAndItsProb(double[] outcomeLikelihood){
 		int mostLikelyOutcome=0;
-		double maxProb=normarlizedOutcomeLikelihood[mostLikelyOutcome];
-		for(int i=1;i<normarlizedOutcomeLikelihood.length;i++){
-			if(normarlizedOutcomeLikelihood[i]>=maxProb){
+		double maxProb=outcomeLikelihood[mostLikelyOutcome];
+		for(int i=1;i<outcomeLikelihood.length;i++){
+			if(outcomeLikelihood[i]>=maxProb){
 				mostLikelyOutcome=i;
-				maxProb=normarlizedOutcomeLikelihood[i];
+				maxProb=outcomeLikelihood[i];
 			}
 		}
 		return new double[]{mostLikelyOutcome, maxProb};
@@ -694,13 +581,21 @@ public class Fusion {
 					for (int i = 0; i < outcomes.length; i++) {
 						int outcome = outcomes[i];
 						IndicatorVector iv=ivs.vectorSet.get(indicator);
+						
+						if(iv.timeInHMS.contains("17:45:15")){
+							System.out.println();
+						}
+						
 						condProbs[i]=conditionalProbabilityProduct(iv.features, outcome, iv.indicator, HIGH_LEVEL_ACTIVITY_UPARKING);
-						mostLikelyOutcomes[indicatorCnt]=(int)mostLikelyOutcome(condProbs)[0];
+						mostLikelyOutcomes[indicatorCnt]=(int)getMostLikelyOutcomeAndItsProb(condProbs)[0];
 						
 						if(indicatorCnt==0) outcomeLikelihood[i]=1;//initialize
 						
 						if(//true
-							indicatorCnt==0 || mostLikelyOutcomes[indicatorCnt]==mostLikelyOutcomes[indicatorCnt-1]
+							indicatorCnt==0 || 
+							(mostLikelyOutcomes[indicatorCnt]==mostLikelyOutcomes[indicatorCnt-1]
+									//&&mostLikelyOutcomes[indicatorCnt]!=OUTCOME_NONE //no clear impact
+							)
 						){
 							outcomeLikelihood[i] *= condProbs[i]; // precision is 3
 						}
@@ -714,7 +609,7 @@ public class Fusion {
 				outcomeLikelihood[i] *= PRIOR_PROBABILITY.get(outcomes[i]);
 			}
 			outcomeLikelihood=normalizeProbabilities(outcomeLikelihood);
-			double[] mostLikelyOutcomeAndProb=mostLikelyOutcome(outcomeLikelihood);
+			double[] mostLikelyOutcomeAndProb=getMostLikelyOutcomeAndItsProb(outcomeLikelihood);
 			int mostLikelyOutcome=(int)mostLikelyOutcomeAndProb[0];
 			double mostLikelyOutcomeProb=mostLikelyOutcomeAndProb[1];
 			switch(mostLikelyOutcome){
@@ -738,8 +633,97 @@ public class Fusion {
 		return detected;
 	}
 	
+	public static double conditionalProbabilityProduct(double[] features, int outcome, int indicator, int highLevelActivity){
+		double ret=1;
+		HashSet<Integer> usedFeatures=new HashSet<Integer>();
+		switch (indicator) {
+		case INDICATOR_MST:
+			usedFeatures.add(0);
+			usedFeatures.add(1);
+			usedFeatures.add(2);
+			usedFeatures.add(3);
+			break;
+		case INDICATOR_CIV:
+			usedFeatures.add(2);//0,2
+			usedFeatures.add(4);
+			usedFeatures.add(7);//5,7
+		default:
+			break;
+		}
+
+		
+		for(int featureIdx=0;featureIdx<features.length;featureIdx++){
+			if(!usedFeatures.contains(featureIdx)) continue;
+			String identifier=outcome+"-"+indicator+"-"+featureIdx;
+			if(CONDITIONAL_PROBABILITY.containsKey(identifier)){
+				double featureValue=features[featureIdx];
+				ConditionalProbability cp=CONDITIONAL_PROBABILITY.get(identifier);
+				double featureCondProb;  						
+				double delta=ConditionalProbability.getDelta(cp, highLevelActivity);
+				featureCondProb=cp.getProbNormalDistr(featureValue	,delta);
+				ret*=featureCondProb;
+				String indi="";
+				switch(indicator){
+				case INDICATOR_LIGHT_DAY:
+					indi="LIGHT-DAY";
+					break;
+				case INDICATOR_LIGHT_NIGHT:
+					indi="LIGHT-NIGHT";
+					break;
+				case INDICATOR_RSS:
+					indi="RSS";
+					break;
+				default:
+					break;
+				}
+				//System.out.println(indi+" "+identifier+" "+featureCondProb);
+				String logMsg=identifier+" "+featureValue+" "+delta+" "+featureCondProb+" "+ret;
+				if(DEBUG_ON){
+					System.out.println(logMsg);
+				}
+			}
+		}
+		return ret;
+	}
 	
 	
+	public static void tuneIndoorOutdoorFusion(){
+		int[] outcomes={Fusion.ENVIRON_INDOOR, Fusion.ENVIRON_OUTDOOR};
+		double[] probs={0.6, 0.4};
+		
+		
+		//int[] indicators={INDICATOR_LIGHT_DAY, INDICATOR_RSS};
+		int[] indicators={INDICATOR_LIGHT_NIGHT, INDICATOR_RSS};
+		
+		double[][] features={
+				//light
+				{74},
+				//RSS
+				{59}
+		};
+		
+		
+		double prob;
+		for(int i=0;i<outcomes.length;i++){
+			int outcome=outcomes[i];
+			prob=probs[i];
+			for(int indicator: indicators){
+				prob*=conditionalProbabilityProduct(features[i], outcome, indicator, HIGH_LEVEL_ACTIVITY_IODOOR);
+			}
+			String environ;
+			if(outcome==ENVIRON_INDOOR) environ="Indoor";
+			else environ="outdoor";
+			System.out.println(environ+" "+prob);
+		}
+
+	}
+	
+	
+	
+	
+	/***
+	 * Legacy codes 
+	 */
 	/**
 	 * 
 	 * @param featureVectors
@@ -869,60 +853,6 @@ public class Fusion {
 	}
 	
 	
-	
-	public static ArrayList<IndicatorVector> readVectors(String filepath){
-		ArrayList<IndicatorVector> vectors=new ArrayList<IndicatorVector>();
-		try{
-			int indicator;
-			if(filepath.contains("CIV")) indicator=INDICATOR_CIV;
-			else indicator=INDICATOR_MST;
-				
-			Scanner sc=new Scanner(new File(filepath));
-			while(sc.hasNextLine()){
-				String line=sc.nextLine();
-				if(line.startsWith("@")) continue;
-				String[] fields=line.split(",");
-				double[] features=new double[fields.length-2];
-				for(int i=1;i<fields.length-1;i++) features[i-1]=Double.parseDouble(fields[i]);
-				vectors.add(new IndicatorVector(fields[0], features, indicator));
-			}
-		}catch(Exception ex){
-			ex.printStackTrace();
-		}
-		return vectors;
-	}
-	
-	public static void tuneIndoorOutdoorFusion(){
-		int[] outcomes={Fusion.ENVIRON_INDOOR, Fusion.ENVIRON_OUTDOOR};
-		double[] probs={0.6, 0.4};
-		
-		
-		//int[] indicators={INDICATOR_LIGHT_DAY, INDICATOR_RSS};
-		int[] indicators={INDICATOR_LIGHT_NIGHT, INDICATOR_RSS};
-		
-		double[][] features={
-				//light
-				{74},
-				//RSS
-				{59}
-		};
-		
-		
-		double prob;
-		for(int i=0;i<outcomes.length;i++){
-			int outcome=outcomes[i];
-			prob=probs[i];
-			for(int indicator: indicators){
-				prob*=conditionalProbabilityProduct(features[i], outcome, indicator, HIGH_LEVEL_ACTIVITY_IODOOR);
-			}
-			String environ;
-			if(outcome==ENVIRON_INDOOR) environ="Indoor";
-			else environ="outdoor";
-			System.out.println(environ+" "+prob);
-		}
-
-	}
-	
 	public static void calculateOutcomeLikelihoodWithFusion(String date){
 		double[] outcomeLikelihood=new double[outcomes.length]; 
 		double curProb;  	
@@ -986,60 +916,30 @@ public class Fusion {
 		}
 	}
 	
-	public static double conditionalProbabilityProduct(double[] features, int outcome, int indicator, int highLevelActivity){
-		double ret=1;
-		HashSet<Integer> usedFeatures=new HashSet<Integer>();
-		switch (indicator) {
-		case INDICATOR_MST:
-			usedFeatures.add(0);
-			usedFeatures.add(1);
-			usedFeatures.add(2);
-			usedFeatures.add(3);
-			break;
-		case INDICATOR_CIV:
-			usedFeatures.add(2);//0,2
-			usedFeatures.add(4);
-			usedFeatures.add(7);//5,7
-		default:
-			break;
-		}
-
-		
-		for(int featureIdx=0;featureIdx<features.length;featureIdx++){
-			if(!usedFeatures.contains(featureIdx)) continue;
-			String identifier=outcome+"-"+indicator+"-"+featureIdx;
-			if(CONDITIONAL_PROBABILITY.containsKey(identifier)){
-				double featureValue=features[featureIdx];
-				ConditionalProbability cp=CONDITIONAL_PROBABILITY.get(identifier);
-				double featureCondProb;  						
-				double delta=ConditionalProbability.getDelta(cp, highLevelActivity);
-				featureCondProb=cp.getProbNormalDistr(featureValue	,delta);
-				ret*=featureCondProb;
-				String indi="";
-				switch(indicator){
-				case INDICATOR_LIGHT_DAY:
-					indi="LIGHT-DAY";
-					break;
-				case INDICATOR_LIGHT_NIGHT:
-					indi="LIGHT-NIGHT";
-					break;
-				case INDICATOR_RSS:
-					indi="RSS";
-					break;
-				default:
-					break;
-				}
-				//System.out.println(indi+" "+identifier+" "+featureCondProb);
-				String logMsg=identifier+" "+featureValue+" "+delta+" "+featureCondProb+" "+ret;
-				if(DEBUG_ON){
-					System.out.println(logMsg);
-				}
+	
+	public static ArrayList<IndicatorVector> readVectors(String filepath){
+		ArrayList<IndicatorVector> vectors=new ArrayList<IndicatorVector>();
+		try{
+			int indicator;
+			if(filepath.contains("CIV")) indicator=INDICATOR_CIV;
+			else indicator=INDICATOR_MST;
+				
+			Scanner sc=new Scanner(new File(filepath));
+			while(sc.hasNextLine()){
+				String line=sc.nextLine();
+				if(line.startsWith("@")) continue;
+				String[] fields=line.split(",");
+				double[] features=new double[fields.length-2];
+				for(int i=1;i<fields.length-1;i++) features[i-1]=Double.parseDouble(fields[i]);
+				vectors.add(new IndicatorVector(fields[0], features, indicator));
 			}
+		}catch(Exception ex){
+			ex.printStackTrace();
 		}
-		return ret;
+		return vectors;
 	}
 	
-	/*public static double getDelta(ConditionalProbability cp){
+	public static double getDelta(ConditionalProbability cp){
 		//getSmallestIntervalBetweenObservedMaxAndMinOfTheSameFeature
 		double interval=cp.observedMax-cp.observedMin;
 		String identifier=cp.indicatorID+"-"+cp.featureIdx;
@@ -1051,7 +951,7 @@ public class Fusion {
 		//System.out.println(identifier+" "+interval/5);
 		//return 0.1;
 		return Math.max(interval/20, 0.1);
-	}*/
+	}
 	
 	
 	/*public static void peformance(){

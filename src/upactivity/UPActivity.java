@@ -93,18 +93,26 @@ public class UPActivity implements Comparable<UPActivity> {
 	/**
 	 * 
 	 * @param groudtruh: sorted based on dateTime
-	 * @return find the ground truth event that happens in most recent past (if the distance is larger than threshold, return null)
+	 * @return find the ground truth event that happens in most recent past defined by 
+	 * temporal interval (curtime-upperbound, curtime-lowerbound)
 	 */
-	public UPActivity matchToGroundtruthEvent(ArrayList<UPActivity> groudtruth, int matchTimeDiffThreshold) {
+	public UPActivity matchToGroundtruthEvent(ArrayList<UPActivity> groudtruth, int timeDiffUpperBound, int timeDiffLowerBound) {
 		if(source==SOURCE.GROUND_TRUTH){
 			System.err.println("Error: source cannot be groundtruth");
 			return null;
 		}
-		UPActivity matchedGTEvent=binarySearchLastSmaller(groudtruth, this.timeInSecOfDay);
+		int idxOfLastSmaller=binarySearchLastSmaller(groudtruth, this.dateTime);
 		
-		if(matchedGTEvent!=null && this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay<=matchTimeDiffThreshold){
-			System.out.println(this+" matched to groundtruth event: "+matchedGTEvent);
-			return matchedGTEvent;
+		UPActivity matchedGTEvent;
+		int idx=idxOfLastSmaller;
+		while(idx<groudtruth.size()&&idx>=0){
+			matchedGTEvent=groudtruth.get(idx);
+			if(this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay>timeDiffUpperBound) break;
+			if(this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay>=timeDiffLowerBound){
+				System.out.println(this+" matched to groundtruth event: "+matchedGTEvent);
+				return matchedGTEvent;
+			}
+			idx--;
 		}
 		return null;
 		
@@ -139,16 +147,17 @@ public class UPActivity implements Comparable<UPActivity> {
 	 * @param timeOfSec: to be searched
 	 * @return: the last activity whose timestamp is smaller or equal than timeOfSec
 	 */
-	public static UPActivity binarySearchLastSmaller(ArrayList<UPActivity> activities, int timeInSec){
+	public static int binarySearchLastSmaller(ArrayList<UPActivity> activities, String dateTime){
 		int l=-1, r=activities.size();
 		while(l+1!=r){
 			int m=l+(r-l)/2;
-			if(activities.get(m).timeInSecOfDay-timeInSec>0) r=m;
+			UPActivity act=activities.get(m);
+			if(act.dateTime.compareTo(dateTime)>0) r=m;
 			else l=m;
 		}
-		if(l>=0&&activities.get(l).timeInSecOfDay<=timeInSec) return activities.get(l);
-		else return null;
+		return l;
 	}
+	
 
 
 	public String toString(){

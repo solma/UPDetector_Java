@@ -349,8 +349,9 @@ public class WindowFeatureExtraction {
 	
 	/*
 	 * @filename: path to a feature file:
+	 * also output the features out to a file at accelerometer/fusion/ folder
 	 */
-	public ArrayList<IndicatorVector> outputCIVVectors(ArrayList<WindowFeature> features, String labeldFilePath, File inputRawFile) {
+	public ArrayList<IndicatorVector> outputCIVVectors(ArrayList<WindowFeature> features, String dateSeq, String labeldFilePath) {
 		
 		ArrayList<IndicatorVector> indicatorVectors=new ArrayList<IndicatorVector>();
 		try {
@@ -360,7 +361,8 @@ public class WindowFeatureExtraction {
 			String line, classString="";
 			ArrayList<Double> featureValues=new ArrayList<Double>();
 			
-			// add the groundtruth
+			// read the groundtruth
+			/*
 			if(inputRawFile!=null){
 				Scanner sc=new Scanner(inputRawFile);
 				line=sc.nextLine().trim();
@@ -368,7 +370,7 @@ public class WindowFeatureExtraction {
 					//fw.write(line+"\n");
 				}
 				sc.close();
-			}
+			}*/
 			
 			// write the header first			
 			/*sc = new Scanner(new File(Constants.ACCELEROMETER_CIV_FEATURES_DIR+"arff_header.txt"));
@@ -377,10 +379,11 @@ public class WindowFeatureExtraction {
 			}
 			sc.close();	*/		
 			
-			// write the data
+			// write the vectors to a file
+			FileWriter fw=new FileWriter(Constants.ACCELEROMETER_FUSION_DIR+dateSeq+"_CIV.log");		
+						
 			Mean mean=new Mean();
-			Variance variance=new Variance();
-			
+			Variance variance=new Variance();			
 			int scope=conf.scope; // K/2 preceding windows and K/2 trailing windows
 			
 			ArrayList<WindowFeature> previousWindows=new ArrayList<WindowFeature>();
@@ -447,15 +450,15 @@ public class WindowFeatureExtraction {
 						classString="n";
 					}
 					
-					//fw.append(line);
-					
+					fw.append(line);
+					//timeInHMS is the time stamp of the closing bound of the last window, i.e. when the vector is output
 					indicatorVectors.add(new IndicatorVector(timeInHMS, 
 							CommonUtils.doubleListToDoubleArray(featureValues),
 							Fusion.INDICATOR_CIV, classString));
 					previousWindows.remove(0); // remove the first window
 				}			
 			}
-			//fw.close();
+			fw.close();
 			System.out.println(indicatorVectors.size()+" CIV indicator vectors extracted.");
 		} catch (Exception ex) {
 			ex.printStackTrace();

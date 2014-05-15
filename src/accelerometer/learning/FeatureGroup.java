@@ -1,4 +1,4 @@
-package fusion;
+package accelerometer.learning;
 
 import java.util.ArrayList;
 

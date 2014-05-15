@@ -1,5 +1,6 @@
 package accelerometer;
 
+import fusion.Fusion;
 import helper.CommonUtils;
 import helper.Constants;
 
@@ -28,8 +29,6 @@ import com.google.common.primitives.Doubles;
 
 public class EventDetection {
 	
-	//Used in the logic for determining the transition from in_vehicle to on_foot
-	private static final int MIN_NUMBER_OF_CONSECUTIVE_ON_FOOT_ACTIVITY=1; 
 
 	/*
 	 * parameters for Google API and Weka train activity files
@@ -40,7 +39,6 @@ public class EventDetection {
 	private static int TIMESTAMP_IDX=1;
 	
 	private static String ON_FOOT_ACTIVITY;
-	private static String HELD_IN_HAND_ON_FOOT_ACTIVITY;	
 	private static String IN_VEHICLE_ACTIVITY;
 	
 	private static SOURCE SOURCE;
@@ -48,7 +46,8 @@ public class EventDetection {
 	
 	private static String DELEMITER;
 	private static String FILE_EXTENSION;
-	private static int MATCH_TIME_DIFF_THRESHOLD;
+	private static int MATCH_TIME_DIFF_UPPER_BOUND;
+	private static int MATCH_TIME_DIFF_LOWER_BOUND; //detection delay
 		
 	public static void main(String[] args) {
 	}
@@ -66,8 +65,11 @@ public class EventDetection {
 		return clusteredEvents;
 	}
 	
-	public static EventDetectionResult calculatePerformance(UPActivitiesOfSameSource detectionResults, UPActivitiesOfSameSource groudtruth, int matchTimeDiffThreshold){
-		MATCH_TIME_DIFF_THRESHOLD=matchTimeDiffThreshold;
+	public static EventDetectionResult calculatePerformance(
+			UPActivitiesOfSameSource detectionResults, UPActivitiesOfSameSource groudtruth, 
+			int matchTimeDiffUpperBound, int matchTimeDiffLowerBound){
+		MATCH_TIME_DIFF_UPPER_BOUND=matchTimeDiffUpperBound;
+		MATCH_TIME_DIFF_LOWER_BOUND=matchTimeDiffLowerBound; 
 		return calculatePerformance(detectionResults, groudtruth);
 	}
 	
@@ -82,7 +84,6 @@ public class EventDetection {
 		System.out.println("************************   Detection Precision and Recall:  ***************************");
 		int tp,fp, fn;
 		
-		int[] offsets={0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5};
 		//get the ground-truth for parking/unparking events
 		groudtruth.sort();
 		detectionResults.sort();
@@ -106,8 +107,10 @@ public class EventDetection {
 			HashMap<UPActivity, ArrayList<UPActivity>> matches=new HashMap<UPActivity, ArrayList<UPActivity>>();
 			ArrayList<UPActivity> unmatchedDetectedEvents=new ArrayList<UPActivity>();
 			for(UPActivity detectedEvent: detected){
-				
-				UPActivity matchedTruth=detectedEvent.matchToGroundtruthEvent(truth, MATCH_TIME_DIFF_THRESHOLD );
+				/*if(detectedEvent.timeInHMS.contains("57:06")){
+					System.out.println();
+				}*/
+				UPActivity matchedTruth=detectedEvent.matchToGroundtruthEvent(truth, MATCH_TIME_DIFF_UPPER_BOUND, MATCH_TIME_DIFF_LOWER_BOUND );
 				if(matchedTruth!=null){
 					if(!matches.containsKey(matchedTruth)){
 						matches.put(matchedTruth, new ArrayList<UPActivity>());
@@ -123,13 +126,14 @@ public class EventDetection {
 			ArrayList<UPActivity> clustedUnMatchedDetectedEvents=clusterDetectedEvents(unmatchedDetectedEvents);
 			fp=clustedUnMatchedDetectedEvents.size();
 			
-			//calculate average detecton delay
+			//calculate average detection delay of true positives
+			//for each matched truth only count one detected event			
 			for(UPActivity matchedTruth: matches.keySet()){
 				ArrayList<UPActivity> detectedEventsMatchedToTheSameTruthEvent=matches.get(matchedTruth);
 				Collections.sort(detectedEventsMatchedToTheSameTruthEvent);
 				avgDelay+=detectedEventsMatchedToTheSameTruthEvent.get(0).timeInSecOfDay-matchedTruth.timeInSecOfDay;
 			}
-			avgDelay/=tp;
+			avgDelay=((int)(avgDelay/tp*1000))/1000.0;
 			
 			//print ground truth
 			System.out.print("               Truth: "+ truth.size()+"  ");
@@ -164,42 +168,6 @@ public class EventDetection {
 		return edr;
 	}
 	
-	//@fn date
-	public static UPActivitiesOfSameSource detectEvents(String dateSeq ,UPActivitiesOfSameSource groundTruth){
-		//detect activities by discovering transitions
-		UPActivitiesOfSameSource detectedTransitions= findMotionStateTransition(dateSeq);
-		
-		/*for(int i=0;i<detectedTransitions.size();i++){
-			//add the parking/unparking events
-			for(String timestamp: detectedTransitions.get(i)){
-				String seconds=CommonUtils.cutField(timestamp, ":", 0, 3, ":");
-				if(!AccelerometerSignalProcessing.detectedEvents.get(i).contains(dateSeq+"-"+seconds)){
-					AccelerometerSignalProcessing.detectedEvents.get(i).add(dateSeq+"-"+seconds );
-				}
-			}
-		}*/
-		
-		/*for(int i=0;i<2;i++){
-			if(i==0) System.out.println("Groudtruth Parking events:");
-			else System.out.println("Groudtruth Unparking events:");
-			System.out.println(groundTruth.get(dateSeq).get(i));
-			for(String timestamp:  groundTruth.get(dateSeq).get(i)){
-				System.out.print(CommonUtils.HMSToSeconds(timestamp.split("-")[1])+",");
-			}
-			System.out.println();		
-			
-			if(i==Constants.PARKING_ACTIVITY) System.out.println("Deteced Parking events:");
-			else System.out.println("Deteced Unparking events:");
-			System.out.println(AccelerometerSignalProcessing.detectedEvents.get(i));
-			//print the timestamp of the events in seconds
-			for(String timestamp: AccelerometerSignalProcessing.detectedEvents.get(i)){
-				System.out.print(CommonUtils.HMSToSeconds(timestamp.split("-")[1])+",");
-			}
-			System.out.println();
-			System.out.println();
-		}*/
-		return detectedTransitions;
-	}
 	
 	/*
 	 * choose the direction and setup parameters
@@ -218,13 +186,13 @@ public class EventDetection {
 		if(ACTIVITY_DIR_Name==Constants.ACCELEROMTER_ACTIVITY_WEKA_DIR){
 			SOURCE=SOURCE.MST_WEKA;
 			FILE_NAME_PREFIX="WEKA_";
-			ACTIVITY_IDX=2;
+			ACTIVITY_IDX=24; //2(w/o features) 24 with features
 			ON_FOOT_ACTIVITY="walking";
 			IN_VEHICLE_ACTIVITY="driving";
-			HELD_IN_HAND_ON_FOOT_ACTIVITY="walking";
 			DELEMITER=" ";
 			FILE_EXTENSION=".arff";
-			MATCH_TIME_DIFF_THRESHOLD=30;
+			MATCH_TIME_DIFF_UPPER_BOUND=60;
+			MATCH_TIME_DIFF_LOWER_BOUND=0;
 			
 		}else{
 			SOURCE=SOURCE.MST_GOOGLE;
@@ -233,54 +201,41 @@ public class EventDetection {
 			ACTIVITY_IDX=2;
 			ON_FOOT_ACTIVITY="on_foot";
 			IN_VEHICLE_ACTIVITY="in_vehicle";
-			HELD_IN_HAND_ON_FOOT_ACTIVITY="on_foot";
 			DELEMITER=" ";
-			MATCH_TIME_DIFF_THRESHOLD=90;
+			MATCH_TIME_DIFF_UPPER_BOUND=300;
+			MATCH_TIME_DIFF_LOWER_BOUND=0;
 			FILE_EXTENSION=".log";
 		}
 		return true;
 	}
 
 	
-	private static int NO_Of_Consecutive_OnFootActivities;
 	
 	
-	private static boolean isFromOnFoottoInVehicle(String newDetectedActivity, String lastDetectedActivity){
-        
-        if (newDetectedActivity.equals(IN_VEHICLE_ACTIVITY) 
-        	&& ( lastDetectedActivity.equals(ON_FOOT_ACTIVITY) || lastDetectedActivity.equals(HELD_IN_HAND_ON_FOOT_ACTIVITY))){
-            return true;
-        }
-
-    	return false;
-    }
-    
-    private static boolean isFromInVehicletoOnFoot(String newDetectedActivity, String lastDetectedActivity){
-
-    	//in_vehicle to on_foot
-    	if( (newDetectedActivity.equals(ON_FOOT_ACTIVITY)|| newDetectedActivity.equals(HELD_IN_HAND_ON_FOOT_ACTIVITY))
-    	&& lastDetectedActivity.equals(IN_VEHICLE_ACTIVITY) )
-    	{    		
-            NO_Of_Consecutive_OnFootActivities=1;   
-            if(NO_Of_Consecutive_OnFootActivities==MIN_NUMBER_OF_CONSECUTIVE_ON_FOOT_ACTIVITY) return true;
-    	}else{
-    		//two consecutive on_foot
-    		if(NO_Of_Consecutive_OnFootActivities>0
-    		&& ( newDetectedActivity.equals(ON_FOOT_ACTIVITY)|| newDetectedActivity.equals(HELD_IN_HAND_ON_FOOT_ACTIVITY)) 
-    		&& (lastDetectedActivity.equals(ON_FOOT_ACTIVITY) || lastDetectedActivity.equals(HELD_IN_HAND_ON_FOOT_ACTIVITY) ) ){
-	    		
-    			NO_Of_Consecutive_OnFootActivities+=1;
-    			//found  consecutive on_foot activities
-	    	    if(NO_Of_Consecutive_OnFootActivities==MIN_NUMBER_OF_CONSECUTIVE_ON_FOOT_ACTIVITY) return true;
-    		}
-    	}
-    	return false;
-    }
+	private static int SIZE_OF_PAST_RELEVANT_STATES=3;
+	private static int isTransitioning(ArrayList<String> pastStates, SOURCE msSource){
+		int size=pastStates.size();
+		if(size!=SIZE_OF_PAST_RELEVANT_STATES) return Fusion.OUTCOME_NONE;
+		String lastStateString=pastStates.get(size-1), secondLastState=pastStates.get(size-2), thirdLastSttate=pastStates.get(size-3);
+		if(lastStateString.equals(ON_FOOT_ACTIVITY)
+				&&secondLastState.equals(IN_VEHICLE_ACTIVITY)
+				
+				&& ( thirdLastSttate.equals(IN_VEHICLE_ACTIVITY) || msSource==SOURCE.MST_GOOGLE )
+			)
+			return Fusion.OUTCOME_PARKING;
+		if(lastStateString.equals(IN_VEHICLE_ACTIVITY)
+				&&secondLastState.equals(ON_FOOT_ACTIVITY)
+				&&thirdLastSttate.equals(ON_FOOT_ACTIVITY)
+			)
+			return Fusion.OUTCOME_UNPARKING;
+		return Fusion.OUTCOME_NONE;
+	}
+	
 	
     /**
      * @return detected events 
      */
-	public static UPActivitiesOfSameSource findMotionStateTransition(String fileNameAsDateSeq){
+	public static UPActivitiesOfSameSource findMotionStateTransition(String fileNameAsDateSeq, SOURCE source){
 		
 		String fileName=ACTIVITY_DIR_Name+FILE_NAME_PREFIX+fileNameAsDateSeq+FILE_EXTENSION;
 		//Constants.ACCELEROMETER_BASE_DIR+"04202014/GOOGLE_ACTIVITY_UPDATE_2014_04_200.log";
@@ -289,10 +244,9 @@ public class EventDetection {
 		try{
 			Scanner sc=new Scanner(new File(fileName));
 
-			NO_Of_Consecutive_OnFootActivities=0;
+			ArrayList<String> pastStates=new ArrayList<String>();
 
-			String lastOnFootOrInVehicleActivity=""; 
-		
+			
 			ArrayList<Integer> intervals=new ArrayList<Integer>();
 			int lastTimestamp=0;
 			while(sc.hasNextLine()){
@@ -304,30 +258,35 @@ public class EventDetection {
 				if(lastTimestamp!=0) intervals.add(curTime-lastTimestamp);
 				lastTimestamp=curTime;
 				
+				//ignore non-vehicle-or-foot states
 				if(!newOnFootOrInVehicleActivity.equals(ON_FOOT_ACTIVITY)
-				&&!newOnFootOrInVehicleActivity.equals(IN_VEHICLE_ACTIVITY)
-				&&!newOnFootOrInVehicleActivity.equals(HELD_IN_HAND_ON_FOOT_ACTIVITY))
+					&&!newOnFootOrInVehicleActivity.equals(IN_VEHICLE_ACTIVITY)
+				)
 					continue;
 				
-				if(fields[TIMESTAMP_IDX].contains("16:07:24")){
-					boolean debug=true;
-				}
+				/*if(fields[TIMESTAMP_IDX].contains("16:07:24")){
+					System.out.println();
+				}*/
+				pastStates.add(newOnFootOrInVehicleActivity);
+				if(pastStates.size()==SIZE_OF_PAST_RELEVANT_STATES+1) pastStates.remove(0);
 				
-				//parking
-				if(isFromInVehicletoOnFoot(newOnFootOrInVehicleActivity, lastOnFootOrInVehicleActivity)) {
+				int outcome=isTransitioning(pastStates, source);
+				switch (outcome) {
+				case Fusion.OUTCOME_PARKING:
 					detected.add(new UPActivity(SOURCE, 
 							Constants.PARKING_ACTIVITY, fileNameAsDateSeq.substring(0, 10),
 							CommonUtils.cutField(fields[TIMESTAMP_IDX], ":", 0, 3, ":")
 							));
-				}
-				
-				//unparking
-				if(isFromOnFoottoInVehicle(newOnFootOrInVehicleActivity, lastOnFootOrInVehicleActivity)){
+					break;
+				case Fusion.OUTCOME_UNPARKING:
 					detected.add(new UPActivity(SOURCE, 
 							Constants.UNPARKING_ACTIVITY, fileNameAsDateSeq.substring(0, 10),
 							CommonUtils.cutField(fields[TIMESTAMP_IDX], ":", 0, 3, ":")));
+					break;
+				default:
+					break;
 				}
-				lastOnFootOrInVehicleActivity=newOnFootOrInVehicleActivity;
+				
 				
 			}
 			

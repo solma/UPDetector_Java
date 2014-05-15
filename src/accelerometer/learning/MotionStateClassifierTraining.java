@@ -1,5 +1,6 @@
 package accelerometer.learning;
 
+import helper.CommonUtils;
 import helper.Constants;
 
 import java.io.File;
@@ -12,12 +13,12 @@ import com.google.common.base.CaseFormat;
 
 import upactivity.UPActivitiesOfSameSource;
 import upactivity.UPActivity;
+import upactivity.UPActivity.SOURCE;
 
 import accelerometer.AccelerometerFileProcessing;
 import accelerometer.AccelerometerSignalProcessing;
 import accelerometer.Config;
 import accelerometer.EventDetection;
-import accelerometer.AccelerometerSignalProcessing.MST_SOURCE;
 import accelerometer.EventDetectionResult;
 import accelerometer.windowfeature.WindowFeature;
 import accelerometer.windowfeature.WindowFeatureExtraction;
@@ -60,7 +61,10 @@ public class MotionStateClassifierTraining {
 			MotionStateClassifierTraining.trainNewMotionStateClassifierModelInOneMethod(mstConf);
 			
 			AccelerometerSignalProcessing.generateMotionStatesUsingWekaClassifier(dateSeqs, mstConf); 
-			performanceResults.add( AccelerometerSignalProcessing.detectByMST(dateSeqs, MST_SOURCE.WEKA_CLASSIFIER) );
+			
+			String[] rawAcclFilepaths=AccelerometerSignalProcessing.convertDateSeqToAccelerometerRawFilPath(dateSeqs);
+			UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
+			performanceResults.add( AccelerometerSignalProcessing.detectByMST(dateSeqs,allGroundtruth, SOURCE.MST_WEKA) );
 		}
 		
 		for(int i=0;i<mstConfParas.length;i++){
@@ -75,13 +79,17 @@ public class MotionStateClassifierTraining {
 			String[] fns = { 	
 					"2013_09_191","2013_09_1244", "2013_08_2710", "2013_08_295", "2013_08_2689", "2013_08_283", "2013_08_2311"
 					,"2013_09_1243","2013_09_1244","2013_08_2689"
-					//"2014_04_200", "2014_04_201"
+					,"2014_04_200", "2014_04_201"
+					,"2014_05_1422"
+					,"2014_05_1319"
 					};
 			ArrayList<UPActivity> groundtruth;
-			UPActivity act1, act2;
+			UPActivity act1=null, act2=null;
 			String motionState="";
 			for (int i = 0; i < fns.length; i++) {
 				String fn = Constants.ACCELEROMETER_RAW_DATA_DIR + "all_position/ACCELEROMETER_RAW_" + fns[i] + ".log";
+				String date= fns[i].substring(0, 10);
+				
 				System.out.println("*************** "+fn+" ***************");
 				
 				groundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(new String[]{fn}).toOneSingleSortedList();
@@ -90,13 +98,20 @@ public class MotionStateClassifierTraining {
 				for (WindowFeature wf : fe.run()) {
 					int[] timeWindow=wf.temporalWindow;
 					
-					//if the window feature is in one single state
-					act1=UPActivity.binarySearchLastSmaller(groundtruth, timeWindow[0]);
-					act2=UPActivity.binarySearchLastSmaller(groundtruth, timeWindow[1]);
+					
+					//if the window is in one single state and not near the boarder of the state
+					int bufferTime=2; //seconds
+					int act1Idx=UPActivity.binarySearchLastSmaller(groundtruth, date+"-"+CommonUtils.secondsToHMS(timeWindow[0]-bufferTime) );
+					int act2Idx=UPActivity.binarySearchLastSmaller(groundtruth, date+"-"+CommonUtils.secondsToHMS(timeWindow[1]+bufferTime) );
+					if(act1Idx>=0)	act1=groundtruth.get(act1Idx);
+					if(act2Idx>=0)  act2=groundtruth.get(act2Idx);
 					if(act1!=null&&act2!=null&&	act1.equals(act2)){
 						switch (act1.type) {
 						case Constants.PARKING_ACTIVITY:
 							motionState="Walking";
+							
+							if(fns[i].equals("2014_05_1319")) continue; //avoid mixing standing with walking
+							
 							break;
 						case Constants.UNPARKING_ACTIVITY:
 							motionState="Driving";
@@ -104,7 +119,9 @@ public class MotionStateClassifierTraining {
 						default:
 							break;
 						}
-						fw.write(wf.asMotionStateFeatures() + "," +motionState+ "\n");
+						fw.write(
+								//CommonUtils.secondsToHMS(timeWindow[1])+","+ //comment out this
+								wf.asMotionStateFeatures() + "," +motionState+ "\n");
 					}
 				}
 			}
