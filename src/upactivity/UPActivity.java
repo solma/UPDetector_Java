@@ -49,11 +49,14 @@ public class UPActivity implements Comparable<UPActivity> {
 		this.type=type;
 	}
 	
+	
+	public static String DATE_TIME_DELIMETER="-";
+	
 	public UPActivity(SOURCE source, int type, String date, String timeInHMS){
 		this(source, type);
 		this.date=date;
 		this.timeInHMS=timeInHMS;
-		this.dateTime=date+"-"+timeInHMS;
+		this.dateTime=date+DATE_TIME_DELIMETER+timeInHMS;
 		this.timeInSecOfDay=CommonUtils.HMSToSeconds(timeInHMS);
 	}
 	
@@ -101,7 +104,7 @@ public class UPActivity implements Comparable<UPActivity> {
 			System.err.println("Error: source cannot be groundtruth");
 			return null;
 		}
-		int idxOfLastSmaller=binarySearchLastSmaller(groudtruth, this.dateTime);
+		int idxOfLastSmaller=binarySearchLastEarlier(groudtruth, this.dateTime);
 		
 		UPActivity matchedGTEvent;
 		int idx=idxOfLastSmaller;
@@ -109,45 +112,22 @@ public class UPActivity implements Comparable<UPActivity> {
 			matchedGTEvent=groudtruth.get(idx);
 			if(this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay>timeDiffUpperBound) break;
 			if(this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay>=timeDiffLowerBound){
-				System.out.println(this+" matched to groundtruth event: "+matchedGTEvent);
+				//System.out.println(this+" matched to groundtruth event: "+matchedGTEvent);
 				return matchedGTEvent;
 			}
 			idx--;
 		}
 		return null;
-		
 	}
 	
-	/**
-	 * 
-	 * @param detectedEvents
-	 * @return
-	 */
-	public UPActivity matchToDetectedEvent(ArrayList<UPActivity> detectedEvents, int matchTimeDiffThreshold) {
-		if(source!=SOURCE.GROUND_TRUTH){
-			System.err.println("Error: source has to be groundtruth");
-			return null;
-		}
-		int l=-1, r=detectedEvents.size();
-		while(l+1!=r){
-			int m=l+(r-l)/2;
-			if(compareTo(detectedEvents.get(m))>0) l=m;
-			else r=m;
-		}
-		if(r<=detectedEvents.size()&&timeDiffWithinThreshold(detectedEvents.get(l), matchTimeDiffThreshold)){
-			System.out.println(this+" matched to groundtruth event: "+detectedEvents.get(l));
-			return detectedEvents.get(l);
-		}
-		return null;
-	}
-	
+
 	/**
 	 * 
 	 * @param activities: a list of activities
 	 * @param timeOfSec: to be searched
 	 * @return: the last activity whose timestamp is smaller or equal than timeOfSec
 	 */
-	public static int binarySearchLastSmaller(ArrayList<UPActivity> activities, String dateTime){
+	public static int binarySearchLastEarlier(ArrayList<UPActivity> activities, String dateTime){
 		int l=-1, r=activities.size();
 		while(l+1!=r){
 			int m=l+(r-l)/2;
@@ -156,6 +136,17 @@ public class UPActivity implements Comparable<UPActivity> {
 			else l=m;
 		}
 		return l;
+	}
+	
+	public static int binarySearchFirstLater(ArrayList<UPActivity> activities, String dateTime){
+		int l=-1, r=activities.size();
+		while(l+1!=r){
+			int m=l+(r-l)/2;
+			UPActivity act=activities.get(m);
+			if(act.dateTime.compareTo(dateTime)<0) l=m;
+			else r=m;
+		}
+		return r;
 	}
 	
 

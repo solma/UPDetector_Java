@@ -2,6 +2,7 @@ package accelerometer.learning;
 
 import helper.CommonUtils;
 import helper.Constants;
+import helper.DetectionMethod;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -28,7 +29,7 @@ public class MotionStateClassifierTraining {
 		
 		//tuneParasForMSTClassifier();
 		
-		Config mstConf=new Config(10, 3);
+		Config mstConf=new Config(10, 3, 6);
 		trainNewMotionStateClassifierModelInOneMethod(mstConf);
 		
 		//extractMotionStateForDrivingAndWalkingFromGroundTruthLabeldRawFiles(mstConf);
@@ -57,14 +58,15 @@ public class MotionStateClassifierTraining {
 		
 		Config mstConf;
 		for(int[] paras: mstConfParas){
-			mstConf=new Config(paras[0], paras[1]);
+			mstConf=new Config(paras[0], paras[1], 6);
 			MotionStateClassifierTraining.trainNewMotionStateClassifierModelInOneMethod(mstConf);
 			
 			AccelerometerSignalProcessing.generateMotionStatesUsingWekaClassifier(dateSeqs, mstConf); 
 			
 			String[] rawAcclFilepaths=AccelerometerSignalProcessing.convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 			UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
-			performanceResults.add( AccelerometerSignalProcessing.detectByMST(dateSeqs,allGroundtruth, SOURCE.MST_WEKA) );
+			DetectionMethod dMethod=AccelerometerSignalProcessing.detectByMST(dateSeqs,allGroundtruth, SOURCE.MST_WEKA);
+			performanceResults.add(dMethod.result);
 		}
 		
 		for(int i=0;i<mstConfParas.length;i++){
@@ -82,6 +84,7 @@ public class MotionStateClassifierTraining {
 					,"2014_04_200", "2014_04_201"
 					,"2014_05_1422"
 					,"2014_05_1319"
+					//,"2014_05_1528", "2014_05_1529"
 					};
 			ArrayList<UPActivity> groundtruth;
 			UPActivity act1=null, act2=null;
@@ -101,8 +104,8 @@ public class MotionStateClassifierTraining {
 					
 					//if the window is in one single state and not near the boarder of the state
 					int bufferTime=2; //seconds
-					int act1Idx=UPActivity.binarySearchLastSmaller(groundtruth, date+"-"+CommonUtils.secondsToHMS(timeWindow[0]-bufferTime) );
-					int act2Idx=UPActivity.binarySearchLastSmaller(groundtruth, date+"-"+CommonUtils.secondsToHMS(timeWindow[1]+bufferTime) );
+					int act1Idx=UPActivity.binarySearchLastEarlier(groundtruth, date+"-"+CommonUtils.secondsToHMS(timeWindow[0]-bufferTime) );
+					int act2Idx=UPActivity.binarySearchLastEarlier(groundtruth, date+"-"+CommonUtils.secondsToHMS(timeWindow[1]+bufferTime) );
 					if(act1Idx>=0)	act1=groundtruth.get(act1Idx);
 					if(act2Idx>=0)  act2=groundtruth.get(act2Idx);
 					if(act1!=null&&act2!=null&&	act1.equals(act2)){

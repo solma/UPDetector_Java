@@ -46,8 +46,8 @@ public class EventDetection {
 	
 	private static String DELEMITER;
 	private static String FILE_EXTENSION;
-	private static int MATCH_TIME_DIFF_UPPER_BOUND;
-	private static int MATCH_TIME_DIFF_LOWER_BOUND; //detection delay
+	public static int MATCH_TIME_DIFF_UPPER_BOUND;
+	public static int MATCH_TIME_DIFF_LOWER_BOUND; //detection delay
 		
 	public static void main(String[] args) {
 	}
@@ -172,29 +172,10 @@ public class EventDetection {
 	/*
 	 * choose the direction and setup parameters
 	 */
-	public static boolean setupParametersForMST(String wekaOrGoogle){
-		if(wekaOrGoogle.toLowerCase().equals("weka") ){
-			ACTIVITY_DIR_Name=Constants.ACCELEROMTER_ACTIVITY_WEKA_DIR;
-		}else{
-			if(wekaOrGoogle.toLowerCase().equals("google"))
-				ACTIVITY_DIR_Name=Constants.ACCELEROMTER_ACTIVITY_GOOGLE_DIR;
-			else{
-				System.err.println("Invalid Option! Only 'weka' or 'google'. ");
-				return false;
-			}
-		}
-		if(ACTIVITY_DIR_Name==Constants.ACCELEROMTER_ACTIVITY_WEKA_DIR){
-			SOURCE=SOURCE.MST_WEKA;
-			FILE_NAME_PREFIX="WEKA_";
-			ACTIVITY_IDX=24; //2(w/o features) 24 with features
-			ON_FOOT_ACTIVITY="walking";
-			IN_VEHICLE_ACTIVITY="driving";
-			DELEMITER=" ";
-			FILE_EXTENSION=".arff";
-			MATCH_TIME_DIFF_UPPER_BOUND=60;
-			MATCH_TIME_DIFF_LOWER_BOUND=0;
-			
-		}else{
+	public static boolean setupParametersForMST(SOURCE source){
+		switch (source) {
+		case MST_GOOGLE:
+			ACTIVITY_DIR_Name=Constants.ACCELEROMTER_ACTIVITY_GOOGLE_DIR;
 			SOURCE=SOURCE.MST_GOOGLE;
 			FILE_NAME_PREFIX="GOOGLE_ACTIVITY_";
 			TIMESTAMP_IDX=1;
@@ -205,6 +186,22 @@ public class EventDetection {
 			MATCH_TIME_DIFF_UPPER_BOUND=300;
 			MATCH_TIME_DIFF_LOWER_BOUND=0;
 			FILE_EXTENSION=".log";
+			break;
+		case MST_WEKA:
+			ACTIVITY_DIR_Name=Constants.ACCELEROMTER_ACTIVITY_WEKA_DIR;
+			SOURCE=SOURCE.MST_WEKA;
+			FILE_NAME_PREFIX="WEKA_";
+			ACTIVITY_IDX=24; //2(w/o features) 24 with features
+			ON_FOOT_ACTIVITY="walking";
+			IN_VEHICLE_ACTIVITY="driving";
+			DELEMITER=" ";
+			FILE_EXTENSION=".arff";
+			MATCH_TIME_DIFF_UPPER_BOUND=60;
+			MATCH_TIME_DIFF_LOWER_BOUND=0;
+			break;
+		default:
+			System.err.println("Invalid Option! Only 'weka' or 'google'. ");
+			return false;
 		}
 		return true;
 	}
@@ -212,21 +209,25 @@ public class EventDetection {
 	
 	
 	
-	private static int SIZE_OF_PAST_RELEVANT_STATES=3;
+	private static int SIZE_OF_PAST_RELEVANT_STATES=4;
 	private static int isTransitioning(ArrayList<String> pastStates, SOURCE msSource){
 		int size=pastStates.size();
 		if(size!=SIZE_OF_PAST_RELEVANT_STATES) return Fusion.OUTCOME_NONE;
-		String lastStateString=pastStates.get(size-1), secondLastState=pastStates.get(size-2), thirdLastSttate=pastStates.get(size-3);
+		String lastStateString=pastStates.get(size-1), 
+				secondFromLast=pastStates.get(size-2), thirdFromLast=pastStates.get(size-3), forthFromLast=pastStates.get(size-4);
 		if(lastStateString.equals(ON_FOOT_ACTIVITY)
-				&&secondLastState.equals(IN_VEHICLE_ACTIVITY)
-				
-				&& ( thirdLastSttate.equals(IN_VEHICLE_ACTIVITY) || msSource==SOURCE.MST_GOOGLE )
-			)
+				//&&secondFromLast.equals(ON_FOOT_ACTIVITY)
+				&&secondFromLast.equals(IN_VEHICLE_ACTIVITY)
+				&& (thirdFromLast.equals(IN_VEHICLE_ACTIVITY) || msSource==SOURCE.MST_GOOGLE ) 
+				//&& (forthFromLast.equals(IN_VEHICLE_ACTIVITY) )// || msSource==SOURCE.MST_GOOGLE ) 
+			)//parking
 			return Fusion.OUTCOME_PARKING;
 		if(lastStateString.equals(IN_VEHICLE_ACTIVITY)
-				&&secondLastState.equals(ON_FOOT_ACTIVITY)
-				&&thirdLastSttate.equals(ON_FOOT_ACTIVITY)
-			)
+				//&&secondFromLast.equals(IN_VEHICLE_ACTIVITY)
+				&&secondFromLast.equals(ON_FOOT_ACTIVITY)
+				&&thirdFromLast.equals(ON_FOOT_ACTIVITY)
+				//&&forthFromLast.equals(ON_FOOT_ACTIVITY)
+			)//unparking
 			return Fusion.OUTCOME_UNPARKING;
 		return Fusion.OUTCOME_NONE;
 	}
@@ -337,14 +338,14 @@ public class EventDetection {
 						//the first line must contain in_vehicle state
 						if(line.contains("in_vehicle")){
 							String[] fields=line.split(" ");
-
+							//works fine with files without parking/unparking activities
 							for(int i=2;i<fields.length;i++){
 								String[] timestamps=fields[i].split("~");
 								if(!dateSeq.equals("2013_08_2311")||!timestamps[0].equals("18:41:50")){
-									//groundTruth.get(dateSeq).get(Constants.UNPARKING_ACTIVITY).add(dateSeq+"-"+timestamps[0]); //read time to second only
+									//groundTruth.get(dateSeq).get(Constants.UNPARKING_ACTIVITY).add(dateSeq+UPActivity.DATE_TIME_DELIMETER+timestamps[0]); //read time to second only
 									groudtruth.add(new UPActivity(SOURCE.GROUND_TRUTH, Constants.UNPARKING_ACTIVITY, dateSeq.substring(0, 10), timestamps[0]));
 								}
-								//groundTruth.get(dateSeq).get(Constants.PARKING_ACTIVITY).add(dateSeq+"-"+timestamps[1]);
+								//groundTruth.get(dateSeq).get(Constants.PARKING_ACTIVITY).add(dateSeq+UPActivity.DATE_TIME_DELIMETER+timestamps[1]);
 								groudtruth.add(new UPActivity(SOURCE.GROUND_TRUTH, Constants.PARKING_ACTIVITY, dateSeq.substring(0, 10), timestamps[1]));
 							}
 							

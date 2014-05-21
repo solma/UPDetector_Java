@@ -2,6 +2,8 @@ package accelerometer;
 
 import helper.CommonUtils;
 import helper.Constants;
+import helper.DetectionMethod;
+import helper.RawReadingDuration;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -15,10 +17,12 @@ import java.util.Scanner;
 
 import javax.naming.directory.DirContext;
 
+import org.apache.commons.math3.analysis.function.Add;
 import org.apache.commons.math3.analysis.function.Cos;
 import org.math.io.StringPrintable;
 
 import upactivity.UPActivitiesOfSameSource;
+import upactivity.UPActivity;
 import upactivity.UPActivity.SOURCE;
 import weka.attributeSelection.GainRatioAttributeEval;
 import weka.filters.supervised.instance.StratifiedRemoveFolds;
@@ -43,6 +47,8 @@ public class AccelerometerSignalProcessing {
 	public static ArrayList<String> allTPs=new ArrayList<String>();
 	public static double[] tps=new double[4];
 	
+	
+	public static RawReadingDuration duration=new RawReadingDuration();
 	public static void main(String[] args) {
 		
 		/**
@@ -51,41 +57,60 @@ public class AccelerometerSignalProcessing {
 		////2014_05_012
 		String[] dateSeqs=new String[]{
 				//test set
-				//"2013_09_1243","2013_09_1244","2013_08_2689"
 				"2014_04_200", "2014_04_201",
 				"2014_05_129", "2014_05_1212", "2014_05_1216",
 				"2014_05_1318", "2014_05_1321", "2014_05_1319",
-				"2014_05_1422"
+				"2014_05_1422",
+				"2014_05_1526",	"2014_05_1527", "2014_05_1528", "2014_05_1529",
+				"2014_05_1631",
+				"2014_05_1734",	"2014_05_1735",	"2014_05_1737",
+				"2014_05_1838",
+				"2014_05_1939",
+				"2014_05_2042"
 			};
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
 		
 		
-		Config civConf=new Config(10, 3);
-		Config mstConf=new Config(10, 3); //5, 5
-		ArrayList<ExperimentRun> performanceResults=new ArrayList<ExperimentRun>();
+		
+		Config civConf=new Config(10, 3, 6);
+		Config mstConf=new Config(10, 3); 
+		ArrayList<DetectionMethod> performanceResults=new ArrayList<DetectionMethod>();
 
 		/****************
 		 * below specifying experiments
 		 ********************/
-		//testDetectionThresholdForCIVAndMSTWeka(dateSeqs,allGroundtruth, civConf, mstConf, 30);
+		//testDetectionThresholdForCIVAndMSTWekaGoogle(dateSeqs,allGroundtruth, civConf, mstConf, 30, VaryingParameter.DETECTION_THRESHOLD);
+
 		
-		performanceResults.add(new ExperimentRun("MST-Google", detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_GOOGLE ) ) ); //MST-GOOGLE
-				
-		performanceResults.add(new ExperimentRun("CIV",  detectByCIV(dateSeqs,allGroundtruth, civConf, 0.9, 30) ) );
-		//if(true) return;
+		/*MST-Google*/
+//		DetectionMethod dmMstGoogle=detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_GOOGLE );
+//		performanceResults.add( dmMstGoogle); 
 		
 		
-		//MST-Weka
+		double detectionThresold=0.7;
+		/*CIV*/
+		performanceResults.add(  detectByCIV(dateSeqs,allGroundtruth, civConf, detectionThresold, 30));
+		System.out.println("total duration = "+ duration.totalDuration());
+		if(true) return;
+		
+		/*MST-Weka*/
 		generateMotionStatesUsingWekaClassifier(dateSeqs, mstConf); //intermediate files (motion states) output
-		performanceResults.add(new ExperimentRun("MST-Weka", detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_WEKA) ) );
+		performanceResults.add(detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_WEKA)  );
 	
-		performanceResults.add(new ExperimentRun("CIV-MST-Weka", detectByCIVAndMSTWeka(dateSeqs, civConf, mstConf, 0.9, 30) ) );
+		/*CIV-MST-Weka*/
+		DetectionMethod dmCIVMSTWeka=detectByCIVAndMSTWeka(dateSeqs, civConf, mstConf, detectionThresold, 30) ;
+		performanceResults.add( dmCIVMSTWeka );
 		
+		
+		/*CIV-MST-Weka-Google*/
+//		DetectionMethod dmFuseAll=detectByCIVAndMSTWekaGoogle(allGroundtruth, dmMstGoogle.detectedEvents, dmCIVMSTWeka, 60);
+//		performanceResults.add(dmFuseAll);
+//		
 		System.out.println("******************* # of trips ="+ allGroundtruth.size()+" *****************************");
 		
-		for(ExperimentRun mo: performanceResults){
-			System.out.println(mo);
+		for(DetectionMethod mo: performanceResults){
+			System.out.println(mo.printResult());
 		}
 		
 		
@@ -112,7 +137,7 @@ public class AccelerometerSignalProcessing {
 	 * @param dateSeqs: raw accelerometer files
 	 * @param config: window feature extraction configuration
 	 */
-	public static EventDetectionResult detectByCIV(String[] dateSeqs, UPActivitiesOfSameSource allGroundtruth,
+	public static DetectionMethod detectByCIV(String[] dateSeqs, UPActivitiesOfSameSource allGroundtruth,
 			Config config,	double detectionThreshold, int matchTimeDiffUpperBound	){
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		
@@ -126,11 +151,13 @@ public class AccelerometerSignalProcessing {
 			//wfe.saveIndicatorVectorToFile(indicatorVectors, dateSeq);
 			allDetected.addAll(Fusion.detectByIndicatorVectors(indicatorVectors, dateSeq.substring(0, 10), detectionThreshold,  SOURCE.CIV));
 		}
-		return EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffUpperBound, config.slidingStep*config.scope/2);
+		return new DetectionMethod("CIV", 
+				EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffUpperBound, config.slidingStep*config.scope/2)
+				,allDetected);
 	}
 	
 	
-	public static EventDetectionResult detectByCIVAndMSTWeka(String[] dateSeqs, Config civConfig, Config mstConfig, double detectionThreshold, int matchTimeDiffUpperBound){
+	public static DetectionMethod detectByCIVAndMSTWeka(String[] dateSeqs, Config civConfig, Config mstConfig, double detectionThreshold, int matchTimeDiffUpperBound){
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
 		
@@ -156,7 +183,9 @@ public class AccelerometerSignalProcessing {
 		
 		
 		int matchTimeDiffLowerBound=Math.max(civConfig.slidingStep*civConfig.scope/2, mstConfig.slidingStep*mstConfig.scope/2);
-		return EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffUpperBound, matchTimeDiffLowerBound);
+		return new DetectionMethod("CIV_MST_WEKA",		
+				EventDetection.calculatePerformance( allDetected, allGroundtruth, matchTimeDiffUpperBound, matchTimeDiffLowerBound)
+				,allDetected);
 	}
 
 	
@@ -165,18 +194,21 @@ public class AccelerometerSignalProcessing {
 	 * @param dateSeqs:  raw accelerometer files
 	 * @param mstSource: google or weka (weka needs preprocessing of raw accelerometer files)
 	 */
-	public static EventDetectionResult detectByMST(String[] dateSeqs, UPActivitiesOfSameSource allGroundtruth, SOURCE mstSource){
+	public static DetectionMethod detectByMST(String[] dateSeqs, UPActivitiesOfSameSource allGroundtruth, SOURCE mstSource){
 		UPActivitiesOfSameSource allDetected;
+		String methodName="";
 		switch(mstSource){
 		case MST_GOOGLE:
 			System.out.println("*********** MST Detection via Google API *****************");
-			EventDetection.setupParametersForMST("google");
+			EventDetection.setupParametersForMST(SOURCE.MST_GOOGLE);
 			allDetected=new UPActivitiesOfSameSource(SOURCE.MST_GOOGLE);//MATCH_TIME_DIFF_THRESHOLD=30
+			methodName="MST_Google";
 			break;
 		case MST_WEKA:
 			System.out.println("*********** MST Detection via Weka Classifier *****************");
-			EventDetection.setupParametersForMST("weka");
+			EventDetection.setupParametersForMST(SOURCE.MST_WEKA);
 			allDetected=new UPActivitiesOfSameSource(SOURCE.MST_WEKA); //MATCH_TIME_DIFF_THRESHOLD=90
+			methodName="MST_Weka";
 			break;
 		default:
 			System.err.println("Error: Unknown MST source");
@@ -191,29 +223,100 @@ public class AccelerometerSignalProcessing {
 		}
 		System.out.println();
 		
-		return EventDetection.calculatePerformance( allDetected, allGroundtruth);
+		return new DetectionMethod(methodName, 
+				EventDetection.calculatePerformance( allDetected, allGroundtruth),
+				allDetected);
 	}
 	
-	public static void testDetectionThresholdForCIVAndMSTWeka(
+	
+	public static DetectionMethod detectByCIVAndMSTWekaGoogle(UPActivitiesOfSameSource allGroundtruth, 
+			UPActivitiesOfSameSource detectedByMSTGoogle, 
+			DetectionMethod dmCIVMSTWeka , int expiratioTime){
+		//update google detected by removing detections that are not preceded by 
+		//a detection generated by CIVMSTWeka within the "near past" (defined by the epiration time)  
+		int[] actTypes={Constants.UNPARKING_ACTIVITY, Constants.PARKING_ACTIVITY};
+		System.out.println("CIV-MST_WEKA_GOOGLE: Removed G Activities");
+		for(int type: actTypes){
+			ArrayList<UPActivity> g=detectedByMSTGoogle.get(type);
+			ArrayList<UPActivity> civWeka=dmCIVMSTWeka.detectedEvents.get(type);
+			
+			ArrayList<UPActivity> toBeRemoved=new ArrayList<UPActivity>();
+			for(UPActivity gact: g){
+				int firstLaterActIdx=UPActivity.binarySearchFirstLater(civWeka, 
+						gact.date+UPActivity.DATE_TIME_DELIMETER+CommonUtils.secondsToHMS(gact.timeInSecOfDay-expiratioTime) );
+				if(firstLaterActIdx==civWeka.size()
+				||civWeka.get(firstLaterActIdx).timeInSecOfDay>gact.timeInSecOfDay){
+					toBeRemoved.add(gact);
+				}
+			}
+			System.out.println((type==Constants.PARKING_ACTIVITY?"Parking: ":"Unparking: ")+toBeRemoved);
+			for(UPActivity act: toBeRemoved) g.remove(act);
+		}
+		
+		//calculate the new pre and rec
+		EventDetection.setupParametersForMST(SOURCE.MST_GOOGLE);
+		EventDetectionResult newEdr=EventDetection.calculatePerformance(detectedByMSTGoogle, allGroundtruth);
+		System.out.println("newEdr:\n"+newEdr);
+		//replacing the avgDelay
+		for(int type: actTypes){
+			newEdr.update(type, dmCIVMSTWeka.result.get(type).avgDelay);
+		}
+		return new DetectionMethod("CIV-MST_WEKA_GOOGLE", newEdr);
+	}
+	
+	
+	
+	
+	public enum VaryingParameter{
+		DETECTION_THRESHOLD, SCOPE;
+	}
+	public static void testDetectionThresholdForCIVAndMSTWekaGoogle(
 			String[] dateSeqs, UPActivitiesOfSameSource allGroundtruth,
-			Config civConfig, Config mstConfig, int matchTimeDiffUpperBound) {
-		double[] detectionThresholdArray;
-		// detectionThresholdArray=new double[]{0.5, 0.6, 0.7, 0.8};
-		detectionThresholdArray = new double[10];
-		for (int i = 0; i < detectionThresholdArray.length; i++)
-			detectionThresholdArray[i] = 0.5 + i * 0.05;
-
-		ArrayList<ExperimentRun> performanceResults = new ArrayList<ExperimentRun>();
-		for (int i = 0; i < detectionThresholdArray.length; i++) {
-			performanceResults.add(new ExperimentRun("DT="
-					+ detectionThresholdArray[i], detectByCIVAndMSTWeka(
-					dateSeqs, civConfig, mstConfig, detectionThresholdArray[i],
-					matchTimeDiffUpperBound)));
+			Config civConfig, Config mstConfig, int matchTimeDiffUpperBound,
+			VaryingParameter para
+			) {
+		ArrayList<DetectionMethod> performanceResults = new ArrayList<DetectionMethod>();
+		ArrayList<DetectionMethod> performanceResultsCIVWeka = new ArrayList<DetectionMethod>();
+		
+		switch (para) {
+		case DETECTION_THRESHOLD:
+			double[] detectionThresholdArray;
+			// detectionThresholdArray=new double[]{0.5, 0.6, 0.7, 0.8};
+			detectionThresholdArray = new double[9];
+			for (int i = 0; i < detectionThresholdArray.length; i++)
+				detectionThresholdArray[i] = 0 + i * 0.1;
+			
+			for (int i = 0; i < detectionThresholdArray.length; i++) {
+				DetectionMethod dmMstGoogle=detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_GOOGLE );
+				DetectionMethod dmCIVMSTWeka=detectByCIVAndMSTWeka(dateSeqs, civConfig, mstConfig, detectionThresholdArray[i],matchTimeDiffUpperBound);
+				
+				DetectionMethod dmFuseAll=detectByCIVAndMSTWekaGoogle(allGroundtruth, dmMstGoogle.detectedEvents, dmCIVMSTWeka, 60);
+				dmFuseAll.name+=" DT="+ detectionThresholdArray[i];
+				performanceResults.add(dmFuseAll);
+				performanceResultsCIVWeka.add(dmCIVMSTWeka);
+			}
+			break;
+		case SCOPE:
+			int[] scope=new int[]{2,4,6,8,10,12,14,18,20};
+			for (int i = 0; i < scope.length; i++) {
+				civConfig.scope=scope[i];
+				mstConfig.scope=scope[i];
+				DetectionMethod dmMstGoogle=detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_GOOGLE );
+				DetectionMethod dmCIVMSTWeka=detectByCIVAndMSTWeka(dateSeqs, civConfig, mstConfig, 0.5,matchTimeDiffUpperBound);
+				
+				DetectionMethod dmFuseAll=detectByCIVAndMSTWekaGoogle(allGroundtruth, dmMstGoogle.detectedEvents, dmCIVMSTWeka, 60);
+				dmFuseAll.name+=" Scope="+ scope[i];
+				performanceResults.add(dmFuseAll);
+				performanceResultsCIVWeka.add(dmCIVMSTWeka);
+			}
+		default:
+			break;
 		}
 
 		System.out.println("******************* # of trips ="+ allGroundtruth.size() + " *****************************");
-		for (ExperimentRun mo : performanceResults) {
-			System.out.println(mo);
+		for(int i=0;i<performanceResults.size();i++){
+			System.out.println(performanceResults.get(i).printResult());
+			System.out.println(performanceResultsCIVWeka.get(i).printResult());
 		}
 	}
 	
@@ -388,20 +491,15 @@ public class AccelerometerSignalProcessing {
 		}
 	}
 	
-	
-	
-	
 }
 
-class ExperimentRun{
-	String  name;
-	EventDetectionResult result;
-	public ExperimentRun(String name, EventDetectionResult edr){
-		this.name=name;
-		result=edr;
-	}
-	
-	public String toString(){
-		return name+"\n"+result;
-	}
-}
+
+
+
+
+
+
+
+
+
+

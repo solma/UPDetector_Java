@@ -15,6 +15,7 @@ import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 
 import accelerometer.AccelerometerFileProcessing;
+import accelerometer.AccelerometerSignalProcessing;
 import accelerometer.Config;
 
 import com.google.common.primitives.Doubles;
@@ -191,10 +192,12 @@ public class WindowFeatureExtraction {
 				
 			}
 			sc.close();
+			AccelerometerSignalProcessing.duration.add(inputFile.getCanonicalPath(), features.get(features.size()-1).timeIndex-features.get(0).timeIndex);
 		}catch(Exception ex){
 			ex.printStackTrace();
 		}
 		System.out.println(features.size()+" windows extracted. ");
+		
 		return features;
 	}
 	

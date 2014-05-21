@@ -568,9 +568,10 @@ public class Fusion {
 		for (IndicatorVector niv : indicatorVectors) {
 			ivs.add(niv);
 		
-			if(ivs.vectorSet.size()==2){
-				//System.out.println();
+			if(niv.timeInHMS.equals("15:23:30")){
+				System.out.println();
 			}
+			
 			
 			int[] mostLikelyOutcomes=new int[ivs.vectorSet.size()];//most likely outcome for each indicator
 			int indicatorCnt=0;
