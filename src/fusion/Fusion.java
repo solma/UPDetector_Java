@@ -1,6 +1,5 @@
 package fusion;
 
-import helper.CommonUtils;
 import helper.Constants;
 
 import java.io.File;
@@ -10,10 +9,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
 
-import java_cup.runtime.lr_parser;
 
 
-import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 import upactivity.UPActivitiesOfSameSource;
 import upactivity.UPActivity;
