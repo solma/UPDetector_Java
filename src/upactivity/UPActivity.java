@@ -49,6 +49,10 @@ public class UPActivity implements Comparable<UPActivity> {
 		this.type=type;
 	}
 	
+	public int getOppositeType(){
+		if(type==Constants.PARKING_ACTIVITY) return Constants.UNPARKING_ACTIVITY;
+		else return Constants.PARKING_ACTIVITY;
+	}
 	
 	public static String DATE_TIME_DELIMETER="-";
 	
@@ -99,17 +103,31 @@ public class UPActivity implements Comparable<UPActivity> {
 	 * @return find the ground truth event that happens in most recent past defined by 
 	 * temporal interval (curtime-upperbound, curtime-lowerbound)
 	 */
-	public UPActivity matchToGroundtruthEvent(ArrayList<UPActivity> groudtruth, int timeDiffUpperBound, int timeDiffLowerBound) {
+	public UPActivity matchToGroundtruthEvent(UPActivitiesOfSameSource groudtruth, int timeDiffUpperBound, int timeDiffLowerBound) {
 		if(source==SOURCE.GROUND_TRUTH){
 			System.err.println("Error: source cannot be groundtruth");
 			return null;
 		}
-		int idxOfLastSmaller=binarySearchLastEarlier(groudtruth, this.dateTime);
 		
+		if(timeInHMS.startsWith("10:55:39")){
+			System.out.println();
+		}
+		
+		 //idx of the matched gt activity of the same type
+		int idxOfLastSmaller=binarySearchLastEarlier(groudtruth.get(type), this.dateTime);
+		 //idx of the matched gt activity of the opposite type
+		int idxOfLastSmallerOfOppoType=binarySearchLastEarlier(groudtruth.get(getOppositeType()), this.dateTime);
+		
+		//the matched gt act of the oppo. type is more recent
+		if(idxOfLastSmallerOfOppoType>idxOfLastSmaller
+				|| (idxOfLastSmallerOfOppoType==idxOfLastSmaller && idxOfLastSmaller!=-1 && type==Constants.UNPARKING_ACTIVITY))
+			return null;
+		
+		//get the ground truth act. that is within the [timeDiffLowerBound, timeDiffUpperBound]
 		UPActivity matchedGTEvent;
 		int idx=idxOfLastSmaller;
 		while(idx<groudtruth.size()&&idx>=0){
-			matchedGTEvent=groudtruth.get(idx);
+			matchedGTEvent=groudtruth.get(type).get(idx);
 			if(this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay>timeDiffUpperBound) break;
 			if(this.timeInSecOfDay-matchedGTEvent.timeInSecOfDay>=timeDiffLowerBound){
 				//System.out.println(this+" matched to groundtruth event: "+matchedGTEvent);

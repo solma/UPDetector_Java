@@ -66,11 +66,11 @@ public class AccelerometerSignalProcessing {
 				"2014_05_1734",	"2014_05_1735",	"2014_05_1737",
 				"2014_05_1838",
 				"2014_05_1939",
-				"2014_05_2042"
+				"2014_05_2042",
+				"2014_05_227"
 			};
 		String[] rawAcclFilepaths=convertDateSeqToAccelerometerRawFilPath(dateSeqs);
 		UPActivitiesOfSameSource allGroundtruth=EventDetection.readGroudTruthFromRawAccelerometerFile(rawAcclFilepaths);
-		
 		
 		
 		Config civConf=new Config(10, 3, 6);
@@ -84,15 +84,15 @@ public class AccelerometerSignalProcessing {
 
 		
 		/*MST-Google*/
-//		DetectionMethod dmMstGoogle=detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_GOOGLE );
-//		performanceResults.add( dmMstGoogle); 
+		DetectionMethod dmMstGoogle=detectByMST(dateSeqs, allGroundtruth, SOURCE.MST_GOOGLE );
+		performanceResults.add( dmMstGoogle); 
 		
 		
 		double detectionThresold=0.7;
 		/*CIV*/
 		performanceResults.add(  detectByCIV(dateSeqs,allGroundtruth, civConf, detectionThresold, 30));
 		System.out.println("total duration = "+ duration.totalDuration());
-		if(true) return;
+//		if(true) return;
 		
 		/*MST-Weka*/
 		generateMotionStatesUsingWekaClassifier(dateSeqs, mstConf); //intermediate files (motion states) output
@@ -104,11 +104,11 @@ public class AccelerometerSignalProcessing {
 		
 		
 		/*CIV-MST-Weka-Google*/
-//		DetectionMethod dmFuseAll=detectByCIVAndMSTWekaGoogle(allGroundtruth, dmMstGoogle.detectedEvents, dmCIVMSTWeka, 60);
-//		performanceResults.add(dmFuseAll);
-//		
-		System.out.println("******************* # of trips ="+ allGroundtruth.size()+" *****************************");
+		DetectionMethod dmFuseAll=detectByCIVAndMSTWekaGoogle(allGroundtruth, dmMstGoogle.detectedEvents, dmCIVMSTWeka, 60);
+		performanceResults.add(dmFuseAll);
+
 		
+		System.out.println("******************* # of trips ="+ allGroundtruth.size()+" *****************************");
 		for(DetectionMethod mo: performanceResults){
 			System.out.println(mo.printResult());
 		}

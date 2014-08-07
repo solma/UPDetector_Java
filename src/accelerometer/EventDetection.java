@@ -110,7 +110,7 @@ public class EventDetection {
 				/*if(detectedEvent.timeInHMS.contains("57:06")){
 					System.out.println();
 				}*/
-				UPActivity matchedTruth=detectedEvent.matchToGroundtruthEvent(truth, MATCH_TIME_DIFF_UPPER_BOUND, MATCH_TIME_DIFF_LOWER_BOUND );
+				UPActivity matchedTruth=detectedEvent.matchToGroundtruthEvent(groudtruth, MATCH_TIME_DIFF_UPPER_BOUND, MATCH_TIME_DIFF_LOWER_BOUND );
 				if(matchedTruth!=null){
 					if(!matches.containsKey(matchedTruth)){
 						matches.put(matchedTruth, new ArrayList<UPActivity>());
